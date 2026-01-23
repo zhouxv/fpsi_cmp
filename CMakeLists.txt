@@ -4,19 +4,16 @@ project(MyProj)
 set(CMAKE_VERBOSE_MAKEFILE ON)
 set(CMAKE_CXX_STANDARD 20)
 
-# 
+# set install paths for volePSI and secure-join
 set(VOLEPSI_INSTALL_PATH "${CMAKE_SOURCE_DIR}/install/volepsi")
 set(OPRFSO_INSTALL_PATH "${CMAKE_SOURCE_DIR}/install/secure-join")
-
-message(STATUS "VOLEPSI_INSTALL_PATH=${VOLEPSI_INSTALL_PATH}")
-message(STATUS "OPRFSO_INSTALL_PATH=${OPRFSO_INSTALL_PATH}")
-
 
 list(APPEND CMAKE_PREFIX_PATH
     "${VOLEPSI_INSTALL_PATH}"
     "${OPRFSO_INSTALL_PATH}"
 )
 
+# find volePSI and secure-join packages, and add include directories
 find_package(volePSI REQUIRED) 
 find_package(secureJoin REQUIRED)
 include("${OPRFSO_INSTALL_PATH}/lib/cmake/secureJoin/secureJoinTargets.cmake")
@@ -24,7 +21,7 @@ include("${OPRFSO_INSTALL_PATH}/lib/cmake/secureJoin/secureJoinTargets.cmake")
 include_directories(${VOLEPSI_INSTALL_PATH}/include)
 include_directories(${OPRFSO_INSTALL_PATH}/include)
 
-
+# Enable debug logging option
 option(ENABLE_DEBUG_LOG "Enable debug logging" OFF)
 if(ENABLE_DEBUG_LOG)
     add_compile_definitions(ENABLE_DEBUG_LOG=1)
@@ -34,6 +31,7 @@ else()
     message(STATUS "Debug logging DISABLED")
 endif()
 
+# cmake build type and compiler options
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
 endif()
@@ -47,8 +45,8 @@ if (CMAKE_BUILD_TYPE STREQUAL "Release")
   add_compile_options(-O3)
 endif()
 
-message(CMAKE_SOURCE_DIR="${CMAKE_SOURCE_DIR}")
 
+# set source and header files
 set(FUZZYPSI_DIR      ${CMAKE_SOURCE_DIR}/fuzzyPSI/psi)
 set(MPEQT_DIR      ${CMAKE_SOURCE_DIR}/fuzzyPSI/mPeqt)
 set(OPRFSO_DIR      ${CMAKE_SOURCE_DIR}/fuzzyPSI/oprf_so)
@@ -81,6 +79,8 @@ set(COMMON_SOURCES
     ${HEADERS}
 )
 
+
+# create executables for tests and main program
 add_executable(mtest
     ${CMAKE_SOURCE_DIR}/fuzzyPSI/main/test.cpp
     ${COMMON_SOURCES}
