@@ -58,67 +58,83 @@ int main(int argc, char **argv) {
   const u64 LorH = cmd.getOr<u64>("LorH", 0);
   const std::string ip = cmd.getOr<std::string>("ip", "localhost");
   const u64 port = cmd.getOr<u64>("port", 1212);
+  const u64 trait = cmd.getOr<u64>("trait", 5);
   std::string addr = ip + ":" + std::to_string(port);
 
   const int role = cmd.getOr<int>("r", 0); // default receiver (0)
 
-  std::cout << "Test: role=" << (role == 1 ? "sender" : "receiver")
-            << ", n=" << n << ", dim=" << dim << ", delta=" << delta
-            << ", threads=" << numThreads << ", metric=" << metric << "\n";
   if (role == 1) {
-    // 作为发送方
-    CmpFuzzyPSI::FuzzyPsiSender sender;
-    block seed = oc::toBlock(123);
-    sender.init(n, n, 40, dim, metric, delta, LorH, seed, numThreads, false);
+    for (u64 i = 0; i < trait; i++) {
+      // sender side
+      CmpFuzzyPSI::FuzzyPsiSender sender;
+      block seed = oc::toBlock(123);
+      sender.init(n, n, 40, dim, metric, delta, LorH, seed, numThreads, false);
 
-    // 建立连接
-    coproto::Socket chl = coproto::asioConnect(addr, 1);
+      // connect to receiver
+      coproto::Socket chl = coproto::asioConnect(addr, true);
 
-    // 生成输入数据
-    std::vector<block> inputs(n * dim);
-    PRNG prng(oc::toBlock(456));
-    for (u64 i = 0; i < n; ++i) {
-      for (u64 j = 0; j < dim; ++j) {
-        inputs[i * dim + j] = prng.get<block>();
-        if (i < 5) {
-          inputs[i * dim + j] = block(i * dim + j, j + 10);
+      // generate input data
+      std::vector<block> inputs(n * dim);
+      PRNG prng(oc::toBlock(456));
+      for (u64 i = 0; i < n; ++i) {
+        for (u64 j = 0; j < dim; ++j) {
+          inputs[i * dim + j] = prng.get<block>();
+          if (i < 5) {
+            inputs[i * dim + j] = block(i * dim + j, j + 10);
+          }
         }
       }
+
+      // for (u64 i=0; i < 5; i++){
+      //     inputs[i] = i;
+      // }
+
+      // run the protocol
+      macoro::sync_wait(sender.run(inputs, chl));
     }
 
-    // for (u64 i=0; i < 5; i++){
-    //     inputs[i] = i;
-    // }
-
-    // 执行协议
-    macoro::sync_wait(sender.run(inputs, chl));
   } else {
-    // 作为接收方
-    CmpFuzzyPSI::FuzzyPsiReceiver receiver;
-    block seed = oc::toBlock(123);
-    receiver.init(n, n, 40, dim, metric, delta, LorH, seed, numThreads, false);
+    vector<double> times(trait), commus(trait);
+    for (u64 i = 0; i < trait; i++) {
+      // receiver side
+      CmpFuzzyPSI::FuzzyPsiReceiver receiver;
+      block seed = oc::toBlock(123);
+      receiver.init(n, n, 40, dim, metric, delta, LorH, seed, numThreads,
+                    false);
 
-    // 建立连接
-    coproto::Socket chl = coproto::asioConnect(addr, 0);
+      // connect to sender
+      coproto::Socket chl = coproto::asioConnect(addr, false);
 
-    // 生成输入数据
-    std::vector<block> inputs(n * dim);
-    PRNG prng(oc::toBlock(789));
-    for (u64 i = 0; i < n; ++i) {
-      for (u64 j = 0; j < dim; ++j) {
-        inputs[i * dim + j] = prng.get<block>();
-        if (i < 5) {
-          inputs[i * dim + j] = block(i * dim + j, j + 15);
+      // generate input data
+      std::vector<block> inputs(n * dim);
+      PRNG prng(oc::toBlock(789));
+      for (u64 i = 0; i < n; ++i) {
+        for (u64 j = 0; j < dim; ++j) {
+          inputs[i * dim + j] = prng.get<block>();
+          if (i < 5) {
+            inputs[i * dim + j] = block(i * dim + j, j + 15);
+          }
         }
       }
+
+      // run the protocol
+      macoro::sync_wait(receiver.run(inputs, chl));
+
+      times[i] = receiver.online_time / 1000.0;
+      commus[i] = receiver.online_commu / 1024.0 / 1024.0;
     }
 
-    // for (u64 i=0; i < 5; i++){
-    //     inputs[i] = i+1;
-    // }
+    double avg_online_time =
+        accumulate(times.begin(), times.end(), 0.0) / trait;
 
-    // 执行协议
-    macoro::sync_wait(receiver.run(inputs, chl));
+    double avg_com = accumulate(commus.begin(), commus.end(), 0.0) / trait;
+
+    string mertric_str = (metric == 0) ? "inf" : std::to_string(metric);
+
+    cout << std::format("{:^5}  𝐿{}  {:^5}  {:^5}  "
+                        "{:^10.3f}  {:^10.3f}",
+                        n, mertric_str, dim, delta, avg_com, avg_online_time)
+         << endl;
   }
 
   return 0;

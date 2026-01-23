@@ -2,6 +2,7 @@
 set -e
 # This script is used to build the project using CMake and Make.
 
+rm -rf build
 mkdir -p build && cd build
 
 printf "Building the project with CMake and Make...\n"
