@@ -32,27 +32,27 @@ RUN add-apt-repository ppa:ubuntu-toolchain-r/test -y && \
     update-alternatives --set g++ /usr/bin/g++-13
 
 # Install thirdparty dependencies
-COPY ./shell_install_all_dependencies.sh ./
+COPY ./shell_install_dependencies.sh ./
 
 
 RUN chmod +x ./*.sh && \
-    ./shell_install_all_dependencies.sh
+    ./shell_install_dependencies.sh
 
 #  Copy sourcode files and build executable file
 COPY ./shell_build_cmd.sh \
     ./CMakeLists.txt \
     ./
-
-
 COPY ./fuzzyPSI/ ./fuzzyPSI/
+
+# Build executable file
 RUN chmod +x ./*.sh && \
     ./shell_build_cmd.sh
 
 # # copy other files
-# COPY ./README.md \
-#     ./shell_run_bench_fmap.sh \
-#     ./shell_run_bench_fpsi.sh \
-#     ./
+COPY ./README.md \
+    ./shell_run_bench_fmap.sh \
+    ./shell_run_bench_fpsi.sh \
+    ./
 
-# RUN chmod +x ./*.sh
+RUN chmod +x ./*.sh
 

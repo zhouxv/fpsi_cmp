@@ -13,6 +13,10 @@ cleanup() {
 # Register Signal Capture
 trap 'cleanup' INT TERM EXIT
 
+ns=(8 12 16)
+dims=(2 6 10)
+deltas=(10 60 250)
+
 printf "[ProType] [Size] [Metric] [Dim] [Delta] [Online_Com.(MB)] [Time(s)] [Offline_Com.(MB)] [Offline_Time(s)]\n"
 
 
