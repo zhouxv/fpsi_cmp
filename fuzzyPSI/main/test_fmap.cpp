@@ -1,103 +1,141 @@
-#include <ranges>
-#include "macoro/async_scope.h"
+#include "coproto/Socket/AsioSocket.h"
+#include "coproto/Socket/LocalAsyncSock.h"
 #include "cryptoTools/Common/CLP.h"
+#include "macoro/async_scope.h"
 #include "psi/Defines.h"
 #include "psi/fmap.h"
-#include "coproto/Socket/LocalAsyncSock.h"
-#include "coproto/Socket/AsioSocket.h"
-
+#include <macoro/when_all.h>
+#include <ranges>
 
 using namespace oc;
 using namespace CmpFuzzyPSI;
 using namespace secJoin;
 
-int main(int argc, char** argv) {
+int main(int argc, char **argv) {
+  oc::CLP cmd(argc, argv);
 
-    oc::CLP cmd(argc, argv);
+  // obtain parameters
+  u64 n = cmd.getOr<u64>("n", 1 << 12); // default 4096
+  if (cmd.isSet("nn")) {
+    n = 1ULL << cmd.get<u64>("nn"); // if -nn is set, n = 2^nn
+  }
 
-    u64 n = cmd.getOr("n", 1ull << cmd.getOr("nn", 12));
-    u64 trials = cmd.getOr("trials", 1);
-    bool nt = cmd.getOr("nt", 1);
-    auto useOle = cmd.isSet("ole");
-    u64 role = cmd.getOr("r", 0);
-    u64 dim = cmd.getOr("dim", 6);
-    u64 delta = cmd.getOr("delta", 60);
-    u64 LorH = 0;
+  const u64 dim = cmd.getOr<u64>("dim", 6);
+  const u64 delta = cmd.getOr<u64>("delta", 60);
+  const u64 LorH = cmd.getOr<u64>("LorH", 0);
+  const u64 trait = cmd.getOr<u64>("trait", 5);
+  const std::string ip = cmd.getOr<std::string>("ip", "localhost");
+  const u64 port = cmd.getOr<u64>("port", 1213);
+  std::string addr = ip + ":" + std::to_string(port);
 
+  std::vector<double> offline_times(trait), offline_commus(trait),
+      online_times(trait), online_commus(trait);
+
+  for (u64 i = 0; i < trait; i++) {
+    FmapSender sender;
+    FmapReceiver recver;
+    // set timer
     oc::Timer timer;
 
-    if (role==0){
-        oc::Timer timer;
+    PRNG send_prng(oc::ZeroBlock);
+    PRNG recv_prng(oc::OneBlock);
 
-        FmapSender sender;
-        sender.setTimer(timer);
-
-        coproto::Socket chl = coproto::asioConnect("localhost:1212", 0);
-        PRNG prng(oc::ZeroBlock);
-
-        std::vector<oc::block> data(n*dim);
-        prng.get(data.data(), data.size());
-        for (u64 i=0; i<5*dim; i++){
-            data[i] = oc::block(i, i/dim);
-        } 
-
-        auto begin0 = timer.setTimePoint("begin");
-        coproto::sync_wait(sender.setUp(n, n, dim, delta, LorH, prng, chl, 1));
-        auto setup_comm = chl.bytesSent() + chl.bytesReceived();
-        auto begin = timer.setTimePoint("begin");
-        std::vector<oc::block> ID(n);
-        std::vector<oc::block> oringins(n*dim);
-        coproto::sync_wait(sender.fuzzyMap(data, ID, oringins, prng, chl, 1));
-        auto end = timer.setTimePoint("end");
-
-        auto offlineTime = std::chrono::duration_cast<std::chrono::milliseconds>(begin - begin0).count();
-        auto onlineTime = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
-        auto onlineComm = chl.bytesSent() + chl.bytesReceived() - setup_comm;
-        
-        std::cout <<"Offline time: " << offlineTime << " ms " << "Online time: " << onlineTime << " ms " << std::endl;
-        std::cout << "Offline comm: " << setup_comm << " Bytes " << "Online comm: " << onlineComm << " Bytes " << std::endl;
-
-
-        DEBUG_LOG("offline: " << std::chrono::duration_cast<std::chrono::milliseconds>(begin - begin0).count() << " ms ");
-        DEBUG_LOG("Online: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() << " ms");
-        DEBUG_LOG("Communication: " << chl.bytesSent() + chl.bytesReceived() - setup_comm << " bytes");
-
-    } else {
-        oc::Timer timer;
-
-        FmapReceiver recver;
-        recver.setTimer(timer);
-
-        coproto::Socket chl = coproto::asioConnect("localhost:1212", 1);
-        PRNG prng(oc::OneBlock);
-
-        std::vector<oc::block> data(n*dim);
-        prng.get(data.data(), data.size());
-        for (u64 i=0; i<5*dim; i++){
-            data[i] = oc::block(i,i/dim);
-        } 
-
-        auto begin0 = timer.setTimePoint("begin");
-        coproto::sync_wait(recver.setUp(n, n, dim, delta, LorH, prng, chl, 1));
-        auto setup_comm = chl.bytesSent() + chl.bytesReceived();
-        auto begin = timer.setTimePoint("begin");
-        std::vector<oc::block> ID(n);
-        std::vector<oc::block> oringins(n*dim);
-        coproto::sync_wait(recver.fuzzyMap(data, ID, prng, chl, 1));
-        auto end = timer.setTimePoint("end");
-
-        auto offlineTime = std::chrono::duration_cast<std::chrono::milliseconds>(begin - begin0).count();
-        auto onlineTime = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
-        auto onlineComm = chl.bytesSent() + chl.bytesReceived() - setup_comm;
-        
-        std::cout <<"Offline time: " << offlineTime << " ms " << "Online time: " << onlineTime << " ms " << std::endl;
-        std::cout << "Offline comm: " << setup_comm << " Bytes " << "Online comm: " << onlineComm << " Bytes " << std::endl;
-
-        DEBUG_LOG("offline: " << std::chrono::duration_cast<std::chrono::milliseconds>(begin - begin0).count() << " ms ");
-        DEBUG_LOG("Online: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() << " ms");
-        DEBUG_LOG("Communication: " << chl.bytesSent() + chl.bytesReceived() - setup_comm << " bytes");
+    // generate data
+    std::vector<oc::block> sender_data(n * dim);
+    send_prng.get(sender_data.data(), sender_data.size());
+    for (u64 i = 0; i < 5 * dim; i++) {
+      sender_data[i] = oc::block(i, i / dim);
     }
 
-    return 0;
+    std::vector<oc::block> recv_data(n * dim);
+    recv_prng.get(recv_data.data(), recv_data.size());
+    for (u64 i = 0; i < 5 * dim; i++) {
+      recv_data[i] = oc::block(i, i / dim);
+    }
 
+    // setup sockets
+    coproto::Socket send_chl, recv_chl;
+    auto init_chl = [&](bool is_server) {
+      if (is_server) {
+        send_chl = coproto::asioConnect(addr, true);
+      } else {
+        recv_chl = coproto::asioConnect(addr, false);
+      }
+    };
+
+    std::thread sender_sock(init_chl, true);
+    std::thread recv_sock(init_chl, false);
+    sender_sock.join();
+    recv_sock.join();
+
+    std::vector<oc::block> send_ID(n), recv_ID(n);
+    std::vector<oc::block> send_oringins(n * dim), recv_oringins(n * dim);
+
+    // setup phase
+    auto begin0 = timer.setTimePoint("begin");
+
+    auto send_setup = [&]() {
+      macoro::sync_wait(
+          sender.setUp(n, n, dim, delta, LorH, send_prng, send_chl, 1));
+    };
+    auto recv_setup = [&]() {
+      macoro::sync_wait(
+          recver.setUp(n, n, dim, delta, LorH, recv_prng, recv_chl, 1));
+    };
+    std::thread send_setup_th(send_setup);
+    std::thread recv_setup_th(recv_setup);
+    send_setup_th.join();
+    recv_setup_th.join();
+
+    auto begin = timer.setTimePoint("begin");
+    auto setup_comm = recv_chl.bytesSent() + recv_chl.bytesReceived();
+
+    // online phase
+
+    auto send_run = [&]() {
+      macoro::sync_wait(sender.fuzzyMap(sender_data, send_ID, send_oringins,
+                                        send_prng, send_chl, 1));
+    };
+    auto recv_run = [&]() {
+      macoro::sync_wait(
+          recver.fuzzyMap(recv_data, recv_ID, recv_prng, recv_chl, 1));
+    };
+    std::thread send_run_th(send_run);
+    std::thread recv_run_th(recv_run);
+    send_run_th.join();
+    recv_run_th.join();
+
+    auto end = timer.setTimePoint("end");
+
+    auto offlineTime =
+        std::chrono::duration_cast<std::chrono::milliseconds>(begin - begin0)
+            .count();
+    auto onlineTime =
+        std::chrono::duration_cast<std::chrono::milliseconds>(end - begin)
+            .count();
+    auto onlineComm =
+        recv_chl.bytesSent() + recv_chl.bytesReceived() - setup_comm;
+
+    offline_times[i] = offlineTime / 1000.0;
+    online_times[i] = onlineTime / 1000.0;
+    offline_commus[i] = setup_comm / 1024.0 / 1024.0;
+    online_commus[i] = onlineComm / 1024.0 / 1024.0;
+  }
+
+  double avg_offline_commu =
+      accumulate(offline_commus.begin(), offline_commus.end(), 0.0) / trait;
+  double avg_offline_time =
+      accumulate(offline_times.begin(), offline_times.end(), 0.0) / trait;
+  double avg_online_time =
+      accumulate(online_times.begin(), online_times.end(), 0.0) / trait;
+  double avg_online_commu =
+      accumulate(online_commus.begin(), online_commus.end(), 0.0) / trait;
+
+  std::cout << std::format("{:^5}  {:^5}  {:^5}  "
+                           "{:^10.3f}  {:^10.3f}  {:^10.3f}  {:^10.3f}",
+                           n, dim, delta, avg_online_commu, avg_online_time,
+                           avg_offline_commu, avg_offline_time)
+            << std::endl;
+
+  return 0;
 }

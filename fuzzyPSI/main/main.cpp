@@ -40,7 +40,7 @@ int main(int argc, char **argv) {
   cmd.parse(argc, argv);
 
   // print help message
-  if (cmd.isSet("h") || cmd.isSet("help") || argc < 2) {
+  if (cmd.isSet("h") || cmd.isSet("help")) {
     printUsage(argv[0]);
     return 0;
   }
@@ -61,81 +61,92 @@ int main(int argc, char **argv) {
   const u64 trait = cmd.getOr<u64>("trait", 5);
   std::string addr = ip + ":" + std::to_string(port);
 
-  const int role = cmd.getOr<int>("r", 0); // default receiver (0)
+  vector<double> online_times(trait), online_commus(trait),
+      offline_times(trait), offline_commus(trait);
+  for (u64 i = 0; i < trait; i++) {
+    // sender side
+    CmpFuzzyPSI::FuzzyPsiSender sender;
+    CmpFuzzyPSI::FuzzyPsiReceiver receiver;
+    block seed = oc::toBlock(123);
+    sender.init(n, n, 40, dim, metric, delta, LorH, seed, numThreads, false);
+    receiver.init(n, n, 40, dim, metric, delta, LorH, seed, numThreads, false);
 
-  if (role == 1) {
-    for (u64 i = 0; i < trait; i++) {
-      // sender side
-      CmpFuzzyPSI::FuzzyPsiSender sender;
-      block seed = oc::toBlock(123);
-      sender.init(n, n, 40, dim, metric, delta, LorH, seed, numThreads, false);
-
-      // connect to receiver
-      coproto::Socket chl = coproto::asioConnect(addr, true);
-
-      // generate input data
-      std::vector<block> inputs(n * dim);
-      PRNG prng(oc::toBlock(456));
-      for (u64 i = 0; i < n; ++i) {
-        for (u64 j = 0; j < dim; ++j) {
-          inputs[i * dim + j] = prng.get<block>();
-          if (i < 5) {
-            inputs[i * dim + j] = block(i * dim + j, j + 10);
-          }
+    // generateinput data
+    std::vector<block> sender_inputs(n * dim);
+    PRNG sender_prng(oc::toBlock(456));
+    for (u64 i = 0; i < n; ++i) {
+      for (u64 j = 0; j < dim; ++j) {
+        sender_inputs[i * dim + j] = sender_prng.get<block>();
+        if (i < 5) {
+          sender_inputs[i * dim + j] = block(i * dim + j, j + 10);
         }
       }
-
-      // for (u64 i=0; i < 5; i++){
-      //     inputs[i] = i;
-      // }
-
-      // run the protocol
-      macoro::sync_wait(sender.run(inputs, chl));
     }
 
-  } else {
-    vector<double> times(trait), commus(trait);
-    for (u64 i = 0; i < trait; i++) {
-      // receiver side
-      CmpFuzzyPSI::FuzzyPsiReceiver receiver;
-      block seed = oc::toBlock(123);
-      receiver.init(n, n, 40, dim, metric, delta, LorH, seed, numThreads,
-                    false);
-
-      // connect to sender
-      coproto::Socket chl = coproto::asioConnect(addr, false);
-
-      // generate input data
-      std::vector<block> inputs(n * dim);
-      PRNG prng(oc::toBlock(789));
-      for (u64 i = 0; i < n; ++i) {
-        for (u64 j = 0; j < dim; ++j) {
-          inputs[i * dim + j] = prng.get<block>();
-          if (i < 5) {
-            inputs[i * dim + j] = block(i * dim + j, j + 15);
-          }
+    std::vector<block> recv_inputs(n * dim);
+    PRNG recv_prng(oc::toBlock(789));
+    for (u64 i = 0; i < n; ++i) {
+      for (u64 j = 0; j < dim; ++j) {
+        recv_inputs[i * dim + j] = recv_prng.get<block>();
+        if (i < 5) {
+          recv_inputs[i * dim + j] = block(i * dim + j, j + 15);
         }
       }
-
-      // run the protocol
-      macoro::sync_wait(receiver.run(inputs, chl));
-
-      times[i] = receiver.online_time / 1000.0;
-      commus[i] = receiver.online_commu / 1024.0 / 1024.0;
     }
 
-    double avg_online_time =
-        accumulate(times.begin(), times.end(), 0.0) / trait;
+    // setup channel
 
-    double avg_com = accumulate(commus.begin(), commus.end(), 0.0) / trait;
+    // connect to receiver
+    coproto::Socket send_chl, recv_chl;
+    auto init_chl = [&](bool is_server) {
+      if (is_server) {
+        send_chl = coproto::asioConnect(addr, true);
+      } else {
+        recv_chl = coproto::asioConnect(addr, false);
+      }
+    };
 
-    string mertric_str = (metric == 0) ? "inf" : std::to_string(metric);
+    std::thread sender_sock(init_chl, true);
+    std::thread recv_sock(init_chl, false);
+    sender_sock.join();
+    recv_sock.join();
 
-    cout << std::format("{:^5}  𝐿{}  {:^5}  {:^5}  "
-                        "{:^10.3f}  {:^10.3f}",
-                        n, mertric_str, dim, delta, avg_com, avg_online_time)
-         << endl;
+    // run the protocol
+    auto send_run = [&]() {
+      macoro::sync_wait(sender.run(sender_inputs, send_chl));
+    };
+    auto recv_run = [&]() {
+      macoro::sync_wait(receiver.run(recv_inputs, recv_chl));
+    };
+
+    std::thread sender_run_th(send_run);
+    std::thread recv_run_th(recv_run);
+    sender_run_th.join();
+    recv_run_th.join();
+
+    online_times[i] = receiver.online_time / 1000.0;
+    online_commus[i] = receiver.online_commu / 1024.0 / 1024.0;
+    offline_times[i] = receiver.offline_time / 1000.0;
+    offline_commus[i] = receiver.offline_commu / 1024.0 / 1024.0;
   }
+
+  double avg_online_time =
+      accumulate(online_times.begin(), online_times.end(), 0.0) / trait;
+  double avg_online_com =
+      accumulate(online_commus.begin(), online_commus.end(), 0.0) / trait;
+
+  double avg_offline_time =
+      accumulate(offline_times.begin(), offline_times.end(), 0.0) / trait;
+  double avg_offline_com =
+      accumulate(offline_commus.begin(), offline_commus.end(), 0.0) / trait;
+
+  string mertric_str = (metric == 0) ? "inf" : std::to_string(metric);
+
+  cout << std::format("{:^5}  𝐿{}  {:^5}  {:^5}  "
+                      "{:^10.3f}  {:^10.3f}  {:^10.3f}  {:^10.3f}",
+                      n, mertric_str, dim, delta, avg_online_com,
+                      avg_online_time, avg_offline_com, avg_offline_time)
+       << endl;
 
   return 0;
 }

@@ -61,6 +61,8 @@ public:
 
   u64 online_time;
   u64 online_commu;
+  u64 offline_time;
+  u64 offline_commu;
 
   Proto run(span<block> inputs, Socket &chl);
   Proto runLinfty(span<block> inputs, Socket &chl);

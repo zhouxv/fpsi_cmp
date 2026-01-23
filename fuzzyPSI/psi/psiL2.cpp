@@ -286,10 +286,11 @@ Proto FuzzyPsiSender::runL2(span<block> inputs, Socket &chl) {
           .count();
   onlineComm = chl.bytesSent() + chl.bytesReceived() - offlineComm;
 
-  std::cout << "Offline time: " << offlineTime << " ms "
-            << "Online time: " << onlineTime << " ms " << std::endl;
-  std::cout << "Offline comm: " << offlineComm << " Bytes "
-            << "Online comm: " << onlineComm << " Bytes " << std::endl;
+  // std::cout << "Offline time: " << offlineTime << " ms "
+  //           << "Online time: " << onlineTime << " ms " << std::endl;
+  // std::cout << "Offline comm: " << offlineComm << " Bytes "
+  //           << "Online comm: " << onlineComm << " Bytes " << std::endl;
+
   // DEBUG_LOG("Offline time: " << offlineTime << " ms " << "Online time: " <<
   // onlineTime << " ms "); DEBUG_LOG("Offline comm: " << offlineComm << " Bytes
   // " << "Online comm: " << onlineComm << " Bytes ");
@@ -578,6 +579,8 @@ Proto FuzzyPsiReceiver::runL2(span<block> inputs, Socket &chl) {
 
   online_time = onlineTime;
   online_commu = onlineComm;
+  offline_commu = offlineComm;
+  offline_time = offlineTime;
 
   // DEBUG_LOG("Offline time: " << offlineTime << " ms " << "Online time: " <<
   // onlineTime << " ms "); DEBUG_LOG("Offline comm: " << offlineComm << " Bytes
