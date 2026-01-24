@@ -16,7 +16,7 @@ install_volepsi(){
     printf "################## Building volepsi             ###################\n\n"
     python3 build.py -DVOLE_PSI_ENABLE_BOOST=ON
     python3 build.py --install=../../install/volepsi
-    cp ./build/volePSI/config.h ../../install/volepsi/include/volePSI/config.h
+    cp ./out/build/linux/volePSI/config.h ../../install/volepsi/include/volePSI/config.h
 
     cd ..
 }
@@ -42,6 +42,4 @@ mkdir -p thirdparty && cd thirdparty
 
 install_securejoin
 install_volepsi
-
-rm -rf thirdparty
 

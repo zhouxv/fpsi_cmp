@@ -17,13 +17,13 @@ ns=(8 12 16)
 dims=(2 6 10)
 deltas=(10 60 250)
 
-printf "[ProType] [Size] [Metric] [Dim] [Delta] [Online_Com.(MB)] [Time(s)] [Offline_Com.(MB)] [Offline_Time(s)]\n"
+printf "[Size] [Dim] [Delta] [Online_Com.(MB)] [Time(s)] [Offline_Com.(MB)] [Offline_Time(s)]\n"
 
 
 for n in "${ns[@]}"; do
     for dim in "${dims[@]}"; do
         for delta in "${deltas[@]}"; do
-        ./build/fpsi  -nn $n -dim $dim -delta $delta -trait 10
+        ./build/fmap -nn $n -dim $dim -delta $delta -trait 10
         done
         echo
     done

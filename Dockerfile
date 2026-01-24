@@ -38,6 +38,8 @@ COPY ./shell_install_dependencies.sh ./
 RUN chmod +x ./*.sh && \
     ./shell_install_dependencies.sh
 
+RUN rm -rf ./thirdparty
+
 #  Copy sourcode files and build executable file
 COPY ./shell_build_cmd.sh \
     ./CMakeLists.txt \

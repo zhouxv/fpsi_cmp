@@ -33,3 +33,6 @@ m_fmap_test
 
 需要补充offline部分:
 psiL2(mod L OLE), mImt(AND pairs)
+
+docker build -t fpsi_cmp:latest .
+docker run -dit --name fpsi_cmp --cap-add=NET_ADMIN fpsi_cmp:latest

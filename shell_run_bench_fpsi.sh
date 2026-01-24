@@ -19,7 +19,7 @@ dims=(2 6 10 15)
 deltas=(10 60 250)
 metrics=(0 1 2)
 
-printf "[ProType] [Size] [Metric] [Dim] [Delta] [Online_Com.(MB)] [Time(s)] [Offline_Com.(MB)] [Offline_Time(s)]\n"
+printf "[Size] [Metric] [Dim] [Delta] [Online_Com.(MB)] [Time(s)] [Offline_Com.(MB)] [Offline_Time(s)]\n"
 
 for m in "${metrics[@]}"; do
   for n in "${ns[@]}"; do
