@@ -11,8 +11,30 @@ using namespace oc;
 using namespace CmpFuzzyPSI;
 using namespace secJoin;
 
+void printUsage(const char *prog) {
+  std::cout << "Usage: " << prog << " [options]\n"
+            << "  Options:\n"
+            << "    -n <N>          : Set size (direct), default: 4096\n"
+            << "    -nn <N>         : Set size (logarithm), input size = 2^nn "
+               "(overrides -n), default: 12\n"
+            << "    -dim <N>        : Dimension of the points, default: 6\n"
+            << "    -delta <N>      : Distance threshold δ for fuzzy matching, "
+               "default: 60\n"
+            << "    -ip <addr>      : Server IP address, default: localhost\n"
+            << "    -port <N>       : Server port number, default: 1212\n"
+            << "    -trait <N>      : Number of trials for averaging results, "
+               "default: 5\n"
+            << "    -h/--help       : Print this help message\n";
+}
+
 int main(int argc, char **argv) {
   oc::CLP cmd(argc, argv);
+
+  // print help message
+  if (cmd.isSet("h") || cmd.isSet("help")) {
+    printUsage(argv[0]);
+    return 0;
+  }
 
   // obtain parameters
   u64 n = cmd.getOr<u64>("n", 1 << 12); // default 4096

@@ -3,9 +3,7 @@ set -e
 
 # This script installs all necessary dependencies for the project.
 
-
-
-install_volepsi(){
+install_volepsi() {
     rm -rf volepsi
 
     printf "################## Cloning volepsi repository   ###################\n\n"
@@ -14,6 +12,8 @@ install_volepsi(){
     git checkout ed943f5f814591cdf864777c73b7bc9e7526c1a8
 
     printf "################## Building volepsi             ###################\n\n"
+    sed -i '37a\ -DENABLE_FOLEAGE=ON' thirdparty/getLibOTe.cmake
+    sed -i '61c\ set(libOTe_options silentot silent_vole circuits foleage)' cmake/findDependancies.cmake
     python3 build.py -DVOLE_PSI_ENABLE_BOOST=ON
     python3 build.py --install=../../install/volepsi
     cp ./out/build/linux/volePSI/config.h ../../install/volepsi/include/volePSI/config.h
@@ -21,14 +21,14 @@ install_volepsi(){
     cd ..
 }
 
-install_securejoin(){
+install_securejoin() {
     rm -rf secure-join
 
-    printf "################## Cloning secure-join repository   ###################\n\n"
+    printf "################## Cloning secure-join repository ###################\n\n"
     git clone https://github.com/ladnir/secure-join.git
     cd secure-join
     git checkout 377ca63b9d8f4f6aede0d3a2e3d9078973a3ee10
-    
+
     printf "################## Building secure-join             ###################\n\n"
     python3 build.py -DFETCH_SODIUM=ON -DOC_THIRDPARTY_HINT="$(pwd)/out/install/linux"
 
@@ -37,9 +37,7 @@ install_securejoin(){
     cd ..
 }
 
-
 mkdir -p thirdparty && cd thirdparty
 
 install_securejoin
 install_volepsi
-

@@ -15,24 +15,21 @@ using namespace volePSI;
 using namespace oc;
 
 void printUsage(const char *prog) {
-  std::cout << "Usage: " << prog << "[options]\n"
+  std::cout << "Usage: " << prog << " [options]\n"
             << "  Options:\n"
-            << "    -n <N>          : input size (default: 1024)\n"
-            << "    -nn <N>          : input size 2^n (default: 12)\n"
-            << "    -dim <N>        : diemnsion (default: 5)\n"
-            << "    -delta <N>      : distamce threshold (default: 30)\n"
-            << "    -metric <N>     : which p for L_p distance, 0 is for "
-               "infinate case (default: 0)\n"
-            //   << "    -t <T>          : Thread count (default: 2)\n"
-            << "    -a <addr>       : Address for network mode, e.g., "
-               "'localhost:1212'\n"
-            << "    -LorH           : Low diemsnional protocol (1) or High "
-               "dimensional protocol (0)\n"
-            << "\n"
-            << "Examples:\n"
-            << "  " << prog << " -m local\n"
-            << "  " << prog << " -m sender -a localhost:1212 &\n"
-            << "  " << prog << " -m receiver -a localhost:1212\n";
+            << "    -n <N>          : Set size (direct), default: 4096\n"
+            << "    -nn <N>         : Set size (logarithm), input size = 2^nn "
+               "(overrides -n), default: 12\n"
+            << "    -dim <N>        : Dimension of the points, default: 6\n"
+            << "    -delta <N>      : Distance threshold δ for fuzzy matching, "
+               "default: 60\n"
+            << "    -metric <N>     : Distance metric (0: L∞, 1: L₁, 2: L₂), "
+               "default: 0\n"
+            << "    -ip <addr>      : Server IP address, default: localhost\n"
+            << "    -port <N>       : Server port number, default: 1212\n"
+            << "    -trait <N>      : Number of trials for averaging results, "
+               "default: 5\n"
+            << "    -h/--help       : Print this help message\n";
 }
 
 int main(int argc, char **argv) {
