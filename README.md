@@ -100,9 +100,9 @@ docker run -dit --name fpsi_cmp --cap-add=NET_ADMIN blueobsidian/fpsi_cmp:latest
 ./shell_run_bench_fpsi.sh
 ```
 
-## 4. Usage Guide for Executable
+## 4. Usage Guide for Executables
 
-This section describes the usage of the executable file located at `./build/fpsi` and `./build/fmap`.
+This section describes the usage of the executables located at `./build/fpsi` and `./build/fmap`.
 
 ### Command-Line Options for `./build/fpsi`
 
