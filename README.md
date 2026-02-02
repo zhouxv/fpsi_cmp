@@ -100,11 +100,11 @@ docker run -dit --name fpsi_cmp --cap-add=NET_ADMIN blueobsidian/fpsi_cmp:latest
 ./shell_run_bench_fpsi.sh
 ```
 
-## 4. Usage Guide for Executables
+## 5. Usage Guide for Executables
 
 This section describes the usage of the executables located at `./build/fpsi` and `./build/fmap`.
 
-### Command-Line Options for `./build/fpsi`
+### 5.1 Command-Line Options for `./build/fpsi`
 
 | Flag | Meaning | Optional Values | Description |
 |:----:|:--------|:----------------|:------------|
@@ -118,7 +118,7 @@ This section describes the usage of the executables located at `./build/fpsi` an
 | **trait** | Number of Trials | Positive integer, default: `5` | Number of test runs for averaging results |
 | **h/help** | Help Message | Flag (no value) | Print help message and usage |
 
-### Command-Line Options for `./build/fmap`
+### 5.2 Command-Line Options for `./build/fmap`
 
 | Flag | Meaning | Optional Values | Description |
 |:----:|:--------|:----------------|:------------|
