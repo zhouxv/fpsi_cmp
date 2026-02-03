@@ -21,11 +21,15 @@ int main(int argc, char **argv) {
 
   tVar t;
   tStart(t);
-  std::thread recv_thread(
-      [&]() { macoro::sync_wait(triples_0.gen0(socket0)); });
+  std::thread recv_thread([&]() {
+    macoro::sync_wait(triples_0.gen0(socket0));
+    macoro::sync_wait(trans_andpair0(socket0, triples_0));
+  });
 
-  std::thread send_thread(
-      [&]() { macoro::sync_wait(triples_1.gen1(socket1)); });
+  std::thread send_thread([&]() {
+    macoro::sync_wait(triples_1.gen1(socket1));
+    macoro::sync_wait(trans_andpair1(socket1, triples_1));
+  });
 
   // wait for both sides to finish
   recv_thread.join();
@@ -34,20 +38,16 @@ int main(int argc, char **argv) {
   auto duration = tEnd(t);
 
   for (u64 i = 0; i < 128; i++) {
-    auto e0_s = triples_0.a[i];
-    auto e1_s = triples_0.b[i];
+    auto e_s = triples_0.b[i];
     auto and_s = triples_0.c[i];
 
-    auto e0_r = triples_1.a[i];
-    auto e1_r = triples_1.b[i];
+    auto e_r = triples_1.a[i];
     auto and_r = triples_1.c[i];
 
-    std::cout << "Triple " << i << ": " << "e0_s = " << e0_s
-              << ", e0_r = " << e0_r << ", A = " << (e0_s ^ e0_r)
-              << ", e1_s = " << e1_s << ", e1_r = " << e1_r
-              << ", B = " << (e1_s ^ e1_r) << ", and_s = " << and_s
-              << ", and_r = " << and_r << ", AND = " << (and_s ^ and_r)
-              << std::endl;
+    std::cout << "Triple " << i << ": " << "e_s = " << e_s << ", e_r = " << e_r
+              << ", A = " << (e_s & e_r) << ", and_s= " << and_s
+              << ", and_r = " << and_r << ", AND = " << (and_s ^ and_r) << " "
+              << ((e_s & e_r) == (and_s ^ and_r)) << std::endl;
   }
 
   std::cout << "Generated " << num_triples << " triples in " << duration

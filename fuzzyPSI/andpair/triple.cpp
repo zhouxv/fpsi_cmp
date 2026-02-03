@@ -1,4 +1,5 @@
 #include "triple.h"
+#include <cryptoTools/Common/BitVector.h>
 #include <iostream>
 #include <libOTe/TwoChooseOne/Iknp/IknpOtExtReceiver.h>
 #include <libOTe/TwoChooseOne/Iknp/IknpOtExtSender.h>
@@ -111,4 +112,18 @@ coproto::task<> triple1(coproto::Socket &chl, BitVector &a1, BitVector &b1,
 
   co_await recvChl.flush();
   co_await sendChl.flush();
+}
+
+coproto::task<> trans_andpair0(coproto::Socket &chl, Triples &triple) {
+  co_await chl.send(triple.a);
+  co_await chl.flush();
+}
+
+coproto::task<> trans_andpair1(coproto::Socket &chl, Triples &triple) {
+  BitVector a0(triple.a.size());
+  co_await chl.recv(a0);
+  co_await chl.flush();
+
+  triple.a = triple.a ^ a0;
+  triple.c = triple.c ^ (triple.a & triple.b);
 }

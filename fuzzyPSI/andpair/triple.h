@@ -60,3 +60,7 @@ struct Triples {
 };
 
 inline bool block_to_bool(block x) { return x.data()[0] & 1; }
+
+coproto::task<> trans_andpair0(coproto::Socket &chl, Triples &triple);
+
+coproto::task<> trans_andpair1(coproto::Socket &chl, Triples &triple);
