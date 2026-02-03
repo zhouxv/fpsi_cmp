@@ -55,7 +55,6 @@ namespace CmpFuzzyPSI
 
 	const bool isImplement = true;
 	const u64 kappa = 40; // security parameter
-	// const u64 kappa = 40; // input length to PEQT
 }
 
 

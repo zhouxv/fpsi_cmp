@@ -11,6 +11,7 @@ Proto FuzzyPsiSender::runL2(span<block> inputs, Socket &chl) {
   u64 modLLength = oc::log2ceil(modL);
   modL = 1 << modLLength;
   ModOps mod(modL);
+  bool doFakeSetup = true;
   long long offlineTime = 0;
   long long onlineTime = 0;
   DEBUG_LOG("begin");
@@ -49,9 +50,25 @@ Proto FuzzyPsiSender::runL2(span<block> inputs, Socket &chl) {
   std::vector<u64> ole_b(TableSize * mDim, 0);
   std::vector<u64> ole_d(TableSize * mDim, 0);
 
-  for (u64 i = 0; i < 5 * mDim; ++i) {
-    ole_b[i] = i;
-    ole_d[i] = i + 1;
+  if (doFakeSetup){
+    for (u64 i=0; i<TableSize * mDim; i++){
+      ole_b[i] = mPrng.get<u32>() % modL;
+      ole_d[i] = mPrng.get<u32>() % modL;
+    }
+    cp::sync_wait(chl.send(ole_b));
+    cp::sync_wait(chl.send(ole_d));
+  } else {
+    CoeffCtxIntegerMod<u32> mod_ops(modL);
+    for (u64 i=0; i<TableSize * mDim; i++){
+      SilentVoleSenderMod<u32, u32> ole_sender(mod_ops);
+      AlignedUnVector<u32> B(1);
+      u32 DELTA = mPrng.get<u32>() % modL;
+    
+      ole_sender.configure(1, SilentBaseType::BaseExtend, 128, mod_ops);
+      cp::sync_wait(ole_sender.silentSend(DELTA, B, mPrng, chl));
+      ole_b[i] = DELTA;
+      ole_d[i] = mod.sub(0,B[0]);
+    }
   }
 
   // offline ROT output
@@ -140,8 +157,6 @@ Proto FuzzyPsiSender::runL2(span<block> inputs, Socket &chl) {
         u64 y_org = ((u64 *)&oringins[b * mDim + j])[0];
         if ((y_hat >= y_org) && (y_hat - y_org >= mDelta))
           cmp_inputs_bin[2 * i * mDim + 2 * j] = (y_hat - mDelta) & m_min_1;
-        // & m_min_1 can be ommited, since M=2^{Cmp_len}, and (y_hat -mDelta)
-        // mod M = ((y_hat -mDelta) mod 2^64) mod M
         else
           cmp_inputs_bin[2 * i * mDim + 2 * j] = y_org & m_min_1;
 
@@ -162,10 +177,6 @@ Proto FuzzyPsiSender::runL2(span<block> inputs, Socket &chl) {
           bool bit = (Opprf_val(b, byteIndex) >> bitIndex) & 1;
           a_prime ^= (bit << k);
         }
-        // if (b<1)
-        //     std::cout << b << " dim " << j << ": " << (a_prime % modL) << " "
-        //     << ((u64*)&inputs[b*mDim + j])[0] << " " << mod.sub(a_prime,
-        //     ((u64*)&inputs[b*mDim + j])[0]) << std::endl;
 
         b_prime[i * mDim + j] =
             mod.sub(a_prime, ((u64 *)&inputs[b * mDim + j])[0]);
@@ -286,29 +297,6 @@ Proto FuzzyPsiSender::runL2(span<block> inputs, Socket &chl) {
           .count();
   onlineComm = chl.bytesSent() + chl.bytesReceived() - offlineComm;
 
-  // std::cout << "Offline time: " << offlineTime << " ms "
-  //           << "Online time: " << onlineTime << " ms " << std::endl;
-  // std::cout << "Offline comm: " << offlineComm << " Bytes "
-  //           << "Online comm: " << onlineComm << " Bytes " << std::endl;
-
-  // DEBUG_LOG("Offline time: " << offlineTime << " ms " << "Online time: " <<
-  // onlineTime << " ms "); DEBUG_LOG("Offline comm: " << offlineComm << " Bytes
-  // " << "Online comm: " << onlineComm << " Bytes ");
-
-  // for (u64 i=0; i<TableSize; i++){
-  //     // copy the opprf value to v_s
-  //     if (!cuckoo.mBins[i].isEmpty()) {
-  //         u64 b = cuckoo.mBins[i].idx();
-  //         if (b < 5){
-  //             std::cout << "bin" << i << " item " << b << ": " ;
-  //             for (u64 j=0; j<peqtLength; j++){
-  //                 std::cout <<  peqtSend[i*peqtLength + j];
-  //             }
-  //             // std::cout << distance_share[2*i] << " " <<
-  //             distance_share[2*i+1]; std::cout << std::endl;
-  //         }
-  //     }
-  // }
   co_return;
 }
 
@@ -319,6 +307,7 @@ Proto FuzzyPsiReceiver::runL2(span<block> inputs, Socket &chl) {
   u64 modLLength = oc::log2ceil(modL);
   modL = 1 << modLLength;
   ModOps mod(modL);
+  bool doFakeSetup = true;
   long long offlineTime = 0;
   long long onlineTime = 0;
   Timer timer;
@@ -357,11 +346,32 @@ Proto FuzzyPsiReceiver::runL2(span<block> inputs, Socket &chl) {
   // offline ole, ab=c+d mod L, toBeAdded, modL
   std::vector<u64> ole_a(TableSize * mDim, 0);
   std::vector<u64> ole_c(TableSize * mDim, 0);
+  
+  if (doFakeSetup){
+    std::vector<u64> ole_b(TableSize * mDim, 0);
+    std::vector<u64> ole_d(TableSize * mDim, 0);
+    cp::sync_wait(chl.recv(ole_b));
+    cp::sync_wait(chl.recv(ole_d));
+    for (u64 i=0; i<TableSize * mDim; i++){
+      ole_a[i] = mPrng.get<u32>() % modL;
+      ole_c[i] = mod.mul(ole_a[i],ole_b[i]);
+      ole_c[i] = mod.sub(ole_c[i],ole_d[i]);
+    }
+  } else {
+    CoeffCtxIntegerMod<u32> mod_ops(modL);
+    for (u64 i=0; i<TableSize * mDim; i++){
+      SilentVoleReceiverMod<u32, u32> ole_receiver(mod_ops);
+      AlignedUnVector<u32> A(1);
+      AlignedUnVector<u32> C(1);
+            
+      ole_receiver.configure(1, SilentBaseType::BaseExtend, 128, mod_ops);
+      cp::sync_wait(ole_receiver.silentReceive(C, A, mPrng, chl));  
 
-  for (u64 i = 0; i < 5 * mDim; ++i) {
-    ole_a[i] = i;
-    ole_c[i] = i * i - i - 1;
+      ole_a[i] = C[0];
+      ole_c[i] = A[0];
+    }
   }
+
   // offline Output ROT
   std::vector<block> rotOutput(TableSize * mDim);
   BitVector sOutput(TableSize * mDim);
@@ -391,8 +401,6 @@ Proto FuzzyPsiReceiver::runL2(span<block> inputs, Socket &chl) {
   DEBUG_LOG("fmap done");
 
   // build simple table
-  // DEBUG_LOG("Fmap Communication: " << chl.bytesSent() + chl.bytesReceived()
-  // << " bytes");
   Begin = timer.setTimePoint("FuzzyPsiSender::build simple table begin");
   sIdx.insertItems(Identifiers, cuckooSeed);
   End = timer.setTimePoint("FuzzyPsiSender::build simple table end");
@@ -447,11 +455,6 @@ Proto FuzzyPsiReceiver::runL2(span<block> inputs, Socket &chl) {
           Opprf_val(vidx * 3 + hidx, byteIndex) ^= bit << bitIndex;
         }
 
-        // if (vidx < 1)
-        //     std::cout << vidx << " dim " << j  << ": " <<
-        //     ((u64*)&inputs[vidx*mDim + j])[0] << " " <<
-        //     mod.add(((u64*)&inputs[vidx*mDim + j])[0], ole_a[i*mDim + j]) <<
-        //     std::endl;
       }
 
       preidx = Cmp_len * mDim + modLLength * mDim;
@@ -468,8 +471,6 @@ Proto FuzzyPsiReceiver::runL2(span<block> inputs, Socket &chl) {
 
   RsOpprfSender mOpprfSender;
   mOpprfSender.setTimer(timer);
-  // DEBUG_LOG("Opprf inputs size: " << Opprf_key.size() << " value rows: " <<
-  // Opprf_val.rows() << " value cols: " << Opprf_val.cols());
   macoro::sync_wait(mOpprfSender.send(mSenderSize, Opprf_key, Opprf_val, mPrng,
                                       mNumThreads, chl));
   End = timer.setTimePoint("FuzzyPsiReceiver::run-opprf end");
@@ -511,8 +512,6 @@ Proto FuzzyPsiReceiver::runL2(span<block> inputs, Socket &chl) {
           .count();
   onlineComm = chl.bytesSent() + chl.bytesReceived() - offlineComm;
   DEBUG_LOG("Both mIMT done.");
-
-  // DEBUG_LOG(output.size() << " " << output2.size() << " " << TableSize);
 
   Begin = timer.setTimePoint("FuzzyPsiSender::run PEQT begin");
   auto peqtSend = BitVector(TableSize * peqtLength);
@@ -570,36 +569,11 @@ Proto FuzzyPsiReceiver::runL2(span<block> inputs, Socket &chl) {
           .count();
   onlineComm = chl.bytesSent() + chl.bytesReceived() - offlineComm;
 
-  // std::cout << "Intersection Size: " << (outputPSI.size()/mDim) << std::endl;
-
-  // std::cout <<"Offline time: " << offlineTime << " ms " << "Online time: " <<
-  // onlineTime << " ms " << std::endl; std::cout << "Offline comm: " <<
-  // offlineComm << " Bytes " << "Online comm: " << onlineComm << " Bytes " <<
-  // std::endl;
-
   online_time = onlineTime;
   online_commu = onlineComm;
   offline_commu = offlineComm;
   offline_time = offlineTime;
 
-  // DEBUG_LOG("Offline time: " << offlineTime << " ms " << "Online time: " <<
-  // onlineTime << " ms "); DEBUG_LOG("Offline comm: " << offlineComm << " Bytes
-  // " << "Online comm: " << onlineComm << " Bytes ");
-
-  // for (u64 i = 0; i < TableSize; ++i){
-  //     auto bin = sIdx.mBins[i];
-  //     auto size = sIdx.mBinSizes[i];
-  //     for (u64 p = 0; p < size; ++p){
-  //         if (bin[p].idx() < 5){
-  //             std::cout << "bin" << i << " item " << bin[p].idx() << ": " ;
-  //             for (u64 j=0; j<peqtLength; j++){
-  //                 std::cout <<  peqtSend[i*peqtLength + j];
-  //             }
-  //             // std::cout << distance_share[i];
-  //             std::cout << std::endl;
-  //         }
-  //     }
-  // }
   co_return;
 }
 } // namespace CmpFuzzyPSI

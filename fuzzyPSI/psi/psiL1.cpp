@@ -159,7 +159,6 @@ Proto FuzzyPsiSender::runL1(span<block> inputs, Socket &chl) {
 
         u64 y_hat = ((u64 *)&inputs[b * mDim + j])[0];
         u64 y_org = ((u64 *)&oringins[b * mDim + j])[0];
-        // if ((y_hat >= y_org) && (y_hat - y_org >= mDelta))
         if (y_hat - y_org >= mDelta)
           cmp_inputs_bin[3 * i * mDim + 3 * j] = (y_hat - mDelta) & m_min_1;
         else
@@ -248,11 +247,6 @@ Proto FuzzyPsiSender::runL1(span<block> inputs, Socket &chl) {
           m_hat_r[i * mDim + j] ^= (u64)bit << k;
         }
 
-        // if (b < 5){
-        //     std::cout << "bin" << i << " item " << b << " dim " << j << ": "
-        //     ; std::cout << m_hat_r[i*mDim+j]; std::cout << std::endl;
-        // }
-
         u64 m_i_s =
             mod.sub(((u64 *)&inputs[b * mDim + j])[0], m_hat_r[i * mDim + j]);
 
@@ -269,15 +263,11 @@ Proto FuzzyPsiSender::runL1(span<block> inputs, Socket &chl) {
         if (t_i_prime[i * mDim + j]) {
           distance_share[2 * i + 1] =
               mod.sub(distance_share[2 * i + 1], rot_prime[i * mDim + j][0]);
-          // distance_share[2*i+1] = mod.add(distance_share[2*i+1],
-          // rot_prime[i*mDim+j][0]);
           m_hat_s[i * mDim + j] = mod.sub(
               m_hat_s[i * mDim + j], rot0prime_sub_rot1prime[i * mDim + j]);
         } else {
           distance_share[2 * i + 1] =
               mod.sub(distance_share[2 * i + 1], rot_prime[i * mDim + j][1]);
-          // distance_share[2*i+1] = mod.add(distance_share[2*i+1],
-          // rot_prime[i*mDim+j][1]);
           m_hat_s[i * mDim + j] = mod.add(
               m_hat_s[i * mDim + j], rot0prime_sub_rot1prime[i * mDim + j]);
         }
@@ -298,7 +288,6 @@ Proto FuzzyPsiSender::runL1(span<block> inputs, Socket &chl) {
     distance_share[2 * i] = mod.sub(distance_share[2 * i + 1], mDelta);
   }
   sync_wait(chl.send(std::move(m_hat_s_message)));
-  // sync_wait(chl.send(std::move(m_hat_s)));
 
   BitVector v_s_2(TableSize * modLLength);
   BitVector v_s_2_input(2 * TableSize * modLLength);
@@ -384,65 +373,6 @@ Proto FuzzyPsiSender::runL1(span<block> inputs, Socket &chl) {
           .count();
   onlineComm = chl.bytesSent() + chl.bytesReceived() - offlineComm;
 
-  // std::cout << "Offline time: " << offlineTime << " ms "
-  //           << "Online time: " << onlineTime << " ms " << std::endl;
-  // std::cout << "Offline comm: " << offlineComm << " Bytes "
-  //           << "Online comm: " << onlineComm << " Bytes " << std::endl;
-
-  // DEBUG_LOG("Offline time: " << offlineTime << " ms " << "Online time: " <<
-  // onlineTime << " ms "); DEBUG_LOG("Offline comm: " << offlineComm << " Bytes
-  // " << "Online comm: " << onlineComm << " Bytes ");
-
-  // for (u64 i=0; i<TableSize; i++){
-  //     // copy the opprf value to v_s
-  //     if (!cuckoo.mBins[i].isEmpty()) {
-  //         u64 b = cuckoo.mBins[i].idx();
-  //         if (b < 5){
-  //             std::cout << "bin" << i << " item " << b << ": " ;
-  //             for (u64 j=0; j<peqtLength; j++){
-  //                 std::cout <<  peqtSend[i*peqtLength + j];
-  //             }
-  //             // std::cout << distance_share[2*i] << " " <<
-  //             distance_share[2*i+1];
-
-  //             // for (u64 j = 0; j < mDim; ++j){
-  //             //     u64 m_i_s = mod.sub(((u64*)&inputs[b*mDim + j])[0],
-  //             m_hat_r[i*mDim+j]);
-  //             //     u64 tmp = 0;
-  //             //     if (output[2*(i*mDim+j)+1]){
-  //             //         tmp = mod.add(tmp, m_i_s);
-  //             //     } else {
-  //             //         tmp = mod.sub(tmp, m_i_s);
-  //             //     }
-
-  //             //     if (t_i_prime[i*mDim+j]){
-  //             //         tmp = mod.sub(tmp, rot_prime[i*mDim+j][0]);
-  //             //     } else {
-  //             //         tmp = mod.sub(tmp, rot_prime[i*mDim+j][1]);
-  //             //     }
-
-  //             //     u64 tmp0 = 0;
-  //             //     tmp0 = mod.sub(tmp0, rot[i*mDim+j]);
-  //             //     // tmp = mod.sub(tmp, rot[i*mDim + j]);
-  //             //     std::cout << "bin" << i << " item " << b <<" dim " << j
-  //             << ": " << "share: " << output[2*(i*mDim+j)+1] << " " <<
-  //             t_i_prime[i*mDim+j] ;
-  //             //     std::cout << std::endl;
-  //             //     std::cout << " part 1: " << tmp << " " << mod.add(tmp,
-  //             m_i_s) << " " << mod.sub(tmp, m_i_s);
-  //             //     std::cout << std::endl;
-  //             //     std::cout << " part 2: " << tmp0 ;
-  //             //     std::cout << std::endl;
-  //             //     std::cout << " m_i_s: " << m_i_s << " m_hat_s: " <<
-  //             m_hat_s[i*mDim+j];
-  //             //     std::cout << std::endl;
-  //             // }
-
-  //             // std::cout << mod.sub(((u64*)&inputs[b*mDim])[0],
-  //             m_hat_r[i*mDim]); std::cout << std::endl;
-  //         }
-  //     }
-  // }
   co_return;
 }
 
@@ -550,9 +480,6 @@ Proto FuzzyPsiReceiver::runL1(span<block> inputs, Socket &chl) {
   onlineComm = chl.bytesSent() + chl.bytesReceived() - offlineComm;
   DEBUG_LOG("fmap done");
 
-  // build simple table
-  // DEBUG_LOG("Fmap Communication: " << chl.bytesSent() + chl.bytesReceived()
-  // << " bytes");
   Begin = timer.setTimePoint("FuzzyPsiSender::build simple table begin");
   sIdx.insertItems(Identifiers, cuckooSeed);
   End = timer.setTimePoint("FuzzyPsiSender::build simple table end");
@@ -610,8 +537,6 @@ Proto FuzzyPsiReceiver::runL1(span<block> inputs, Socket &chl) {
 
   RsOpprfSender mOpprfSender;
   mOpprfSender.setTimer(timer);
-  // DEBUG_LOG("Opprf inputs size: " << Opprf_key.size() << " value rows: " <<
-  // Opprf_val.rows() << " value cols: " << Opprf_val.cols());
   macoro::sync_wait(mOpprfSender.send(mSenderSize, Opprf_key, Opprf_val, mPrng,
                                       mNumThreads, chl));
   End = timer.setTimePoint("FuzzyPsiReceiver::run-opprf end");
@@ -671,11 +596,6 @@ Proto FuzzyPsiReceiver::runL1(span<block> inputs, Socket &chl) {
         u64 tmp =
             mod.sub(((u64 *)&inputs[vidx * mDim + j])[0], m_i_r[i * mDim + j]);
 
-        // if (vidx < 5){
-        //     std::cout << "bin" << i << " item " << vidx <<" dim " << j << ":
-        //     " ; std::cout << tmp; std::cout << std::endl;
-        // }
-
         for (u64 k = 0; k < modLLength; k++) {
           u64 byteIndex = (j * modLLength + k) / 8;
           u64 bitIndex = (j * modLLength + k) % 8;
@@ -713,27 +633,17 @@ Proto FuzzyPsiReceiver::runL1(span<block> inputs, Socket &chl) {
       distance_share[i] =
           mod.sub(distance_share[i], rot0_add_rot1[i * mDim + j]);
 
-      // if (output[2*(i*mDim+j)+1]^t_i[i*mDim+j]){
-      //     distance_share[i] = mod.sub(distance_share[i], rot[i*mDim + j][0]);
-      // } else {
-      //     distance_share[i] = mod.sub(distance_share[i], rot[i*mDim + j][1]);
-      // }
-
       if (!output[2 * (i * mDim + j) + 1]) {
         distance_share[i] = mod.add(distance_share[i], m_hat_s[i * mDim + j]);
-        // distance_share[i] = mod.sub(distance_share[i], m_hat_s[i*mDim + j]);
       }
     }
 
     distance_share[i] = mod.sub(distance_share[i], rot_prime_sum_d[i]);
-    // distance_share[i] = mod.add(distance_share[i], rot_prime_sum_d[i]);
 
     for (u64 k = 0; k < modLLength; k++) {
       bool bit = (distance_share[i] >> k) & 1;
       bit ^= mmIMTReceiver2.e[2 * i * modLLength + 2 * k];
       v_s_2[i * modLLength + k] = bit;
-      // v_s_2[2*i*modLLength + k] = bit;
-      // v_s_2[2*i*modLLength + modLLength + k] = bit;
     }
   }
 
@@ -748,7 +658,6 @@ Proto FuzzyPsiReceiver::runL1(span<block> inputs, Socket &chl) {
   onlineComm = chl.bytesSent() + chl.bytesReceived() - offlineComm;
   DEBUG_LOG("Second mIMT done.");
 
-  // DEBUG_LOG(output.size() << " " << output2.size() << " " << TableSize);
 
   Begin = timer.setTimePoint("FuzzyPsiSender::run PEQT begin");
   auto peqtSend = BitVector(TableSize * peqtLength);
@@ -806,63 +715,11 @@ Proto FuzzyPsiReceiver::runL1(span<block> inputs, Socket &chl) {
           .count();
   onlineComm = chl.bytesSent() + chl.bytesReceived() - offlineComm;
 
-  // std::cout << "Intersection Size: " << (outputPSI.size()/mDim) << std::endl;
-
-  // std::cout <<"Offline time: " << offlineTime << " ms " << "Online time: " <<
-  // onlineTime << " ms " << std::endl; std::cout << "Offline comm: " <<
-  // offlineComm << " Bytes " << "Online comm: " << onlineComm << " Bytes " <<
-  // std::endl;
-
   online_time = onlineTime;
   online_commu = onlineComm;
   offline_commu = offlineComm;
   offline_time = offlineTime;
 
-  // DEBUG_LOG("Offline time: " << offlineTime << " ms " << "Online time: " <<
-  // onlineTime << " ms "); DEBUG_LOG("Offline comm: " << offlineComm << " Bytes
-  // " << "Online comm: " << onlineComm << " Bytes ");
-
-  // for (u64 i = 0; i < TableSize; ++i){
-  //     auto bin = sIdx.mBins[i];
-  //     auto size = sIdx.mBinSizes[i];
-  //     for (u64 p = 0; p < size; ++p){
-  //         u64 b = bin[p].idx();
-  //         if (b < 5){
-  //             std::cout << "bin" << i << " item " << b << ": " ;
-  //             for (u64 j=0; j<peqtLength; j++){
-  //                 std::cout <<  peqtSend[i*peqtLength + j];
-  //             }
-  //             // std::cout << distance_share[i];
-  //             // for (u64 j = 0; j < mDim; ++j){
-  //             //     u64 tmp = 0;
-  //             //     if (!output[2*(i*mDim+j)+1]){
-  //             //         tmp = mod.add(tmp, m_hat_s[i*mDim + j]);;
-  //             //     }
-  //             //     tmp = mod.sub(tmp, rot_prime[i*mDim + j]);
-
-  //             //     u64 tmp0 = 0;
-  //             //     tmp0 = mod.sub(tmp0, rot0_add_rot1[i*mDim + j]);
-  //             //     std::cout << "bin" << i << " item " << b <<" dim " << j
-  //             << ": " << "shares:" << output[2*(i*mDim+j)+1]<< " " <<
-  //             s_prime[i*mDim+j] ;
-  //             //     std::cout << std::endl;
-  //             //     // std::cout << mod.sub(tmp, rot[i*mDim + j][0]) << " "
-  //             << mod.sub(tmp, rot[i*mDim + j][1]);
-  //             //     std::cout << " part 2 " << tmp ;
-  //             //     std::cout << std::endl;
-  //             //     std::cout << " part 1 " << tmp0 << " " <<  mod.sub(tmp0,
-  //             m_i_r[i*mDim + j]) << " " << mod.add(tmp0, m_i_r[i*mDim + j]);
-  //             //     std::cout << std::endl;
-  //             //     std::cout << " m_i_r: " << m_i_r[i*mDim + j] << "
-  //             m_hat_s: " << m_hat_s[i*mDim + j];
-  //             //     std::cout << std::endl;
-  //             // }
-
-  //             // std::cout << rot0_sub_rot1[i*mDim];
-  //             std::cout << std::endl;
-  //         }
-  //     }
-  // }
   co_return;
 }
 } // namespace CmpFuzzyPSI

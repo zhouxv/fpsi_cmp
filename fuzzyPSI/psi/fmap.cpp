@@ -80,10 +80,6 @@ namespace CmpFuzzyPSI
         // toBeAdded
         //random VOLE instances
         u64 numVole = senderSize + receiverSize;
-        // MultType mulType = DefaultMultType;
-        // SdNoiseDistribution noiseType = SdNoiseDistribution::Regular;
-        // SilentSecType malType = SilentSecType::SemiHonest;
-        // SilentBaseType baseType = SilentBaseType::BaseExtend;
         SilentVoleSender<block, block> sender1;
         SilentVoleReceiver<block, block> receiver2;
 
@@ -142,10 +138,6 @@ namespace CmpFuzzyPSI
 
         //random VOLE instances, toBeAdded
         u64 numVole = senderSize + receiverSize;
-        // MultType mulType = DefaultMultType;
-        // SdNoiseDistribution noiseType = SdNoiseDistribution::Regular;
-        // SilentSecType malType = SilentSecType::SemiHonest;
-        // SilentBaseType baseType = SilentBaseType::BaseExtend;
         SilentVoleSender<block, block> sender2;
         SilentVoleReceiver<block, block> receiver1;
 
@@ -261,74 +253,6 @@ namespace CmpFuzzyPSI
         for(u64 i=0; i<mSenderSize; i++){
             Identifiers[i] = maskedID[i] ^ sMask_share[i + mRecverSize];
         }
-        //Sender ID computed
-            
-        // block rScalar;
-        // std::vector<block> rID(mRecverSize);
-        // std::vector<block> rMask(mSenderSize + mRecverSize);
-        // std::vector<block> rMask_share0(mSenderSize + mRecverSize);
-        // std::vector<block> rBlocks(mRecverSize*mDim);
-        // std::vector<block> mAssignments_s(2*mRecverSize*mDim);
-        // std::vector<block> blocksContainInputs_s(2*mRecverSize*mDim);
-        // std::vector<block> oprfShare_1_s(mSenderSize*mDim);
-        // AltModPrf::KeyType prfKey_s;
-
-        // macoro::sync_wait(chl.recv(rScalar));
-        // macoro::sync_wait(chl.recv(rID));
-        // macoro::sync_wait(chl.recv(rMask));
-        // macoro::sync_wait(chl.recv(rMask_share0));
-        // macoro::sync_wait(chl.recv(rBlocks));
-        // macoro::sync_wait(chl.recv(blocksContainInputs_s));
-        // macoro::sync_wait(chl.recv(mAssignments_s));
-        // macoro::sync_wait(chl.recv(oprfShare_1_s));
-        // macoro::sync_wait(chl.recv(prfKey_s));
-
-        // block scalar = sScalar.gf128Mul(rScalar);
-
-        // VOLE check
-        // for (u64 i=0; i<5; i++){
-        //     if (sScalar.gf128Mul(rMask[i]) != (rMask_share0[i]^rMask_share[i]))
-        //         std::cout << i << "wrong! " << std::endl;
-        // }
-
-        // PRF check
-        // AltModPrf prf_s;
-        // prf_s.setKey(prfKey_s);
-        // for (u64 i=0; i<mSenderSize*mDim; i++){
-        //     if (prf_s.eval(blocksOfInputs[i]) != (oprfShare_1_s[i] ^ oprfShare_1[i]))
-        //         std::cout << "wrong: " << i << std::endl;
-        // }
-
-        // Deciding check
-        // std::vector<block> encryIDtmp(mSenderSize, oc::ZeroBlock);
-        // AltModPrf prf_s;
-        // prf_s.setKey(prfKey_s);
-        // for(u64 i=0; i<5; i++){
-        //     for (u64 j=0; j<mDim; j++){
-        //         encryIDtmp[i] ^= (decodeVal[i*mDim+j] ^ prf_s.eval(blocksOfInputs[i*mDim+j]));
-        //         std::cout << i*mDim+j << " " << blocksOfInputs[i*mDim+j] << " " << (decodeVal[i*mDim+j] ^ prf_s.eval(blocksOfInputs[i*mDim+j])) << std::endl;
-        //     }
-        //     // std::cout << i << " " << encryIDtmp[i] << " " << rID[i] << std::endl;
-        //     // if (encryIDtmp[i] == rID[i]){
-        //     //     std::cout << "correct: " << i << std::endl;
-        //     // }
-        // }
-
-        // for (u64 i=0; i<5; i++){
-        //     std::cout << i << ": " << scalar.gf128Mul(rID[i] ^ mIdentifiers[i]) << std::endl;
-        // }
-
-        // std::cout << "points 0: " << computeBlock(inputs[1], mDelta) << " " << computeCell(inputs[1], mDelta) << 
-        // " " << computeCell(inputs[1], mDelta).sub_epi64(OneBlock) << std::endl;
-        
-        // for (u64 i=0; i<2*mSenderSize*mDim; i++){
-        //     for (u64 j=0; j < 5*mDim; j++){
-        //         if (mAssignments_s[i] == decodeVal[j])
-        //             std::cout << "block of" << j << ": " << i << std::endl;
-        //         if (blocksContainInputs_s[i] == blocksOfInputs[j])
-        //             std::cout << "block of" << j << ": " << i << std::endl;
-        //     }
-        // }
         
 
         co_await chl.flush();
@@ -348,7 +272,6 @@ namespace CmpFuzzyPSI
         for (u64 i=0; i<mRecverSize*mDim; i++){
             blocksOfInputs[i] = computeBlock(inputs[i], mDelta);
             blocksOfInputs[i] = block(i % mDim, 0) ^ blocksOfInputs[i];
-            // blocksOfInputs[i] = _mm_set_epi64x(i % mDim, ((u64*)&blocksOfInputs[i])[0]);
         }
         //receive OKVS and decode
         std::vector<block> decodeVal(mRecverSize*mDim);
@@ -403,17 +326,6 @@ namespace CmpFuzzyPSI
             encryID_rec[i] = rScalar.gf128Mul(encryID_rec[i] ^ rMask_share[i + mRecverSize]) ^ sMask_share[i + mRecverSize];
         }
         macoro::sync_wait(chl.send(std::move(encryID_rec)));
-        //Receiver ID computed
-
-        // macoro::sync_wait(chl.send(rScalar));
-        // macoro::sync_wait(chl.send(mIdentifiers));
-        // macoro::sync_wait(chl.send(rMask));
-        // macoro::sync_wait(chl.send(rMask_share));
-        // macoro::sync_wait(chl.send(blocksOfInputs));
-        // macoro::sync_wait(chl.send(blocksContainInputs));
-        // macoro::sync_wait(chl.send(mAssignments));
-        // macoro::sync_wait(chl.send(oprfShare_1));
-        // macoro::sync_wait(chl.send(prfKey));
 
 
         co_await chl.flush();
@@ -465,8 +377,6 @@ namespace CmpFuzzyPSI
                 // blocksContainInputs[idx] = _mm_set_epi64x(i, ((u64*)&kv.first)[0]);
                 mAssignments[idx] = kv.second ^ dm.eval(blocksContainInputs[idx]);
                 idx++;
-                // if (idx++ >= mSenderSize)
-                //     break;
             }
             // generate oringins
             for (u64 j=0; j < mSenderSize; j++){
@@ -480,10 +390,6 @@ namespace CmpFuzzyPSI
                     tmp = tmp.sub_epi64(OneBlock);
                 }
                 oringins[j*mDim+i] = leftEndPoint(tmp.add_epi64(OneBlock), mDelta);
-
-                // if (j<5)
-                //     std::cout << j*mDim+i << " " << inputs[j*mDim+i] << " " << oringins[j*mDim+i] << " " <<
-                //     blockSub(inputs[j*mDim+i], oringins[j*mDim+i]) << std::endl;
             }
         }
 
@@ -528,10 +434,6 @@ namespace CmpFuzzyPSI
                 }
                 mIdentifiers[j] ^= random;
 
-                // if (j<5){
-                //     std::cout << j*mDim+i << " " << (block1^block(i, 0)) << " " << (block0^block(i, 0)) << " " << (random)<< std::endl;
-                //     // std::cout << j << " " << mIdentifiers[j] << std::endl;
-                // }
             }
             
             // fill OKVS key-value
@@ -539,8 +441,6 @@ namespace CmpFuzzyPSI
                 blocksContainInputs[idx] = block(i, 0) ^ kv.first;
                 mAssignments[idx] = kv.second ^ dm.eval(blocksContainInputs[idx]);
                 idx++;
-                // if (idx++ >= mRecverSize)
-                //     break;
             }
         }
 

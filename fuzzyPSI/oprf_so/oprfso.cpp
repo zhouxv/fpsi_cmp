@@ -17,9 +17,6 @@ namespace CmpFuzzyPSI{
 
         mAltModWPrfSender.init(receiverSize, ole, AltModPrfKeyMode::SenderOnly, AltModPrfInputMode::ReceiverOnly, dm.getKey(), rk);
 
-        // std::cout << "eeeeeee" <<  std::endl;
-        // coproto::sync_wait(ole.start());
-
         co_return;
     }
 
@@ -36,15 +33,10 @@ namespace CmpFuzzyPSI{
 
         mAltModWPrfReceiver.init(receiverSize, ole, AltModPrfKeyMode::SenderOnly, AltModPrfInputMode::ReceiverOnly, {}, sk);
 
-        // std::cout << "eeeeeee" <<  std::endl;
-        // coproto::sync_wait(ole.start());
-
         co_return;
     }
 
     Proto OprfsoSender::oprfSo(span<oc::block> oprfShare, PRNG& prng, Socket& chl, u64 mNumThreads){
-        // std::cout << "eeeeeee" <<  std::endl;
-        // coproto::sync_wait(mAltModWPrfSender.evaluate({}, oprfShare, chl, prng));
         auto r = coproto::sync_wait(coproto::when_all_ready(
             mAltModWPrfSender.evaluate({}, oprfShare, chl, prng),
             ole.start()
@@ -52,22 +44,12 @@ namespace CmpFuzzyPSI{
 
         std::get<0>(r).result();
         std::get<1>(r).result();
-        // auto r = coproto::sync_wait(coproto::when_all_ready(
-        //     ole.start() | macoro::start_on(pool),
-        //     sender.evaluate({}, y0, chl_main, prng) | macoro::start_on(pool)
-        // ));
-        // std::get<0>(r).result();  // ole
-        // std::get<1>(r).result();
 
         co_return;
 
     }
 
     Proto OprfsoReceiver::oprfSo(span<oc::block> data, span<oc::block> oprfShare, PRNG& prng, Socket& chl, u64 mNumThreads){
-        // DEBUG_LOG("Sender done.");
-        // DEBUG_LOG("input length: " << data.size() << " share size: " << oprfShare.size());
-        // std::cout << "eeeeeee" <<  std::endl;
-        // coproto::sync_wait(mAltModWPrfReceiver.evaluate(data, oprfShare, chl, prng));
         auto r = coproto::sync_wait(coproto::when_all_ready(
             mAltModWPrfReceiver.evaluate(data, oprfShare, chl, prng),
             ole.start()

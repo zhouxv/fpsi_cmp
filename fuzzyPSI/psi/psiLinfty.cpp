@@ -120,13 +120,6 @@ Proto FuzzyPsiSender::runLinfty(span<block> inputs, Socket &chl) {
   onlineComm = chl.bytesSent() + chl.bytesReceived() - offlineComm;
   DEBUG_LOG("fmap done");
 
-  // for (u64 i=0; i<5; i++){
-  //     std::cout << i << " " << Identifiers[i] << std::endl;
-  // }
-
-  // DEBUG_LOG("Fmap Communication: " << chl.bytesSent() + chl.bytesReceived()
-  // << " bytes");
-
   // build cuckoo table
   Begin = timer.setTimePoint("FuzzyPsiSender::build cuckoo table begin");
   cuckoo.insert(Identifiers, cuckooSeed);
@@ -188,8 +181,6 @@ Proto FuzzyPsiSender::runLinfty(span<block> inputs, Socket &chl) {
         u64 y_org = ((u64 *)&oringins[b * mDim + j])[0];
         if ((y_hat >= y_org) && (y_hat - y_org >= mDelta))
           cmp_inputs_bin[2 * i * mDim + 2 * j] = (y_hat - mDelta) & m_min_1;
-        // & m_min_1 can be ommited, since M=2^{Cmp_len}, and (y_hat -mDelta)
-        // mod M = ((y_hat -mDelta) mod 2^64) mod M
         else
           cmp_inputs_bin[2 * i * mDim + 2 * j] = y_org & m_min_1;
 
@@ -229,9 +220,6 @@ Proto FuzzyPsiSender::runLinfty(span<block> inputs, Socket &chl) {
           .count();
   onlineComm = chl.bytesSent() + chl.bytesReceived() - offlineComm;
   DEBUG_LOG("mIMT done.");
-  // DEBUG_LOG("TableSize:" << TableSize << " masksize: " << masks.size() <<
-  // " outputsize: " << output.size() <<  " moutputsize: " <<
-  // mmIMTSender.mOutputSize);
 
   Begin = timer.setTimePoint("FuzzyPsiSender::run PEQT begin");
 
@@ -294,32 +282,7 @@ Proto FuzzyPsiSender::runLinfty(span<block> inputs, Socket &chl) {
           .count();
   onlineComm = chl.bytesSent() + chl.bytesReceived() - offlineComm;
 
-  // std::cout << "Offline time: " << offlineTime << " ms "
-  //           << "Online time: " << onlineTime << " ms " << std::endl;
-  // std::cout << "Offline comm: " << offlineComm << " Bytes "
-  //           << "Online comm: " << onlineComm << " Bytes " << std::endl;
 
-  // DEBUG_LOG("Offline time: " << offlineTime << " ms " << "Online time: " <<
-  // onlineTime << " ms "); DEBUG_LOG("Offline comm: " << offlineComm << " Bytes
-  // " << "Online comm: " << onlineComm << " Bytes ");
-
-  // for (u64 i=0; i<TableSize; i++){
-  //     // copy the opprf value to v_s
-  //     if (!cuckoo.mBins[i].isEmpty()) {
-  //         u64 b = cuckoo.mBins[i].idx();
-  //         if (b < 5){
-  //             std::cout << "bin" << i << " item " << b << ": " <<
-  //             peqtoutput[i] << " " ; for (u64 j=0; j<peqtLength; j++){
-  //                 std::cout <<  peqtSend[i*peqtLength + j];
-  //             }
-  //             std::cout << std::endl;
-
-  //             // std::cout << " bin " << i << " cmpinput " << b << ": " <<
-  //             cmp_inputs_bin[2*i*mDim] << " "
-  //             // << cmp_inputs_bin[2*i*mDim +1] << std::endl;
-  //         }
-  //     }
-  // }
   co_return;
 }
 
@@ -386,10 +349,6 @@ Proto FuzzyPsiReceiver::runLinfty(span<block> inputs, Socket &chl) {
   onlineComm = chl.bytesSent() + chl.bytesReceived() - offlineComm;
   DEBUG_LOG("fmap done");
 
-  // for (u64 i=0; i<5; i++){
-  //     std::cout << i << " " << Identifiers[i] << std::endl;
-  // }
-
   // build simple table
   DEBUG_LOG("Fmap Communication: " << chl.bytesSent() + chl.bytesReceived()
                                    << " bytes");
@@ -453,8 +412,6 @@ Proto FuzzyPsiReceiver::runLinfty(span<block> inputs, Socket &chl) {
 
   RsOpprfSender mOpprfSender;
   mOpprfSender.setTimer(timer);
-  // DEBUG_LOG("Opprf inputs size: " << Opprf_key.size() << " value rows: " <<
-  // Opprf_val.rows() << " value cols: " << Opprf_val.cols());
   macoro::sync_wait(mOpprfSender.send(mSenderSize, Opprf_key, Opprf_val, mPrng,
                                       mNumThreads, chl));
   End = timer.setTimePoint("FuzzyPsiReceiver::run-opprf end");
@@ -475,9 +432,6 @@ Proto FuzzyPsiReceiver::runLinfty(span<block> inputs, Socket &chl) {
           .count();
   onlineComm = chl.bytesSent() + chl.bytesReceived() - offlineComm;
   DEBUG_LOG("mIMT done.");
-  // DEBUG_LOG("TableSize:" << TableSize << " masksize: " << masks.size() <<
-  // " outputsize: " << output.size() <<  " moutputsize: " <<
-  // mmIMTReceiver.mOutputSize);
 
   Begin = timer.setTimePoint("FuzzyPsiSender::run PEQT begin");
   auto peqtSend = BitVector(TableSize * peqtLength);
@@ -532,53 +486,12 @@ Proto FuzzyPsiReceiver::runLinfty(span<block> inputs, Socket &chl) {
           .count();
   onlineComm = chl.bytesSent() + chl.bytesReceived() - offlineComm;
 
-  //   std::cout << "Intersection Size: " << (outputPSI.size() / mDim) <<
-  //   std::endl;
-
-  //   std::cout << "Offline time: " << offlineTime << " ms "
-  //             << "Online time: " << onlineTime << " ms " << std::endl;
-  //   std::cout << "Offline comm: " << offlineComm << " Bytes "
-  //             << "Online comm: " << onlineComm << " Bytes " << std::endl;
-
   online_time = onlineTime;
   online_commu = onlineComm;
   offline_commu = offlineComm;
   offline_time = offlineTime;
 
-  // DEBUG_LOG("Offline time: " << offlineTime << " ms " << "Online time: "
-  // << onlineTime << " ms "); DEBUG_LOG("Offline comm: " << offlineComm <<
-  // " Bytes " << "Online comm: " << onlineComm << " Bytes ");
 
-  // for (u64 i = 0; i < TableSize; ++i){
-  //     auto bin = sIdx.mBins[i];
-  //     auto size = sIdx.mBinSizes[i];
-  //     for (u64 p = 0; p < size; ++p){
-  //         u64 b = bin[p].idx();
-  //         if (b < 5){
-  //             std::cout << "bin" << i << " item " << b << ": " <<
-  //             peqtoutput[i]  << " " ; for (u64 j=0; j<peqtLength; j++){
-  //                 std::cout <<  peqtSend[i*peqtLength + j];
-  //             }
-  //             std::cout << std::endl;
-
-  //             // std::cout << " bin " << i << " cmpinput " << b << ": "
-  //             <<
-  //             (((u64*)&inputs[b*mDim])[0] & m_min_1) << std::endl;
-  //         }
-  //     }
-  // }
-
-  // std::cout << "bin" << 2203 << ": " ;
-  // for (u64 j=0; j<peqtLength; j++){
-  //     std::cout <<  peqtSend[2203*peqtLength + j];
-  // }
-  // std::cout << std::endl;
-
-  // std::cout << "bin" << 2245 << ": " ;
-  // for (u64 j=0; j<peqtLength; j++){
-  //     std::cout <<  peqtSend[2203*peqtLength + j];
-  // }
-  // std::cout << std::endl;
 
   co_return;
 }

@@ -18,6 +18,7 @@
 #include "libOTe/TwoChooseOne/Iknp/IknpOtExtReceiver.h"
 #include "libOTe/TwoChooseOne/Iknp/IknpOtExtSender.h"
 #include "mPeqt/peqt.h"
+#include "ole/ole.h"
 
 using namespace volePSI;
 using namespace oc;

@@ -44,13 +44,6 @@ namespace CmpFuzzyPSI
             vose(vose_table, mDataSize, mEqLength, prng, chl, 1);
         }
 
-        // for (u64 i=0; i < 5; i++){
-        //     std::cout << "data " << i << " : ";
-        //     for (u64 j=0; j < 5; j++){
-        //         std::cout << (u64)(convert_val[i*mEqLength+j]) << " " << convert_bit[i*mEqLength+j]<< "; "; 
-        //     }
-        //     std::cout << std::endl;
-        // }
 
         co_return;
     }
@@ -290,7 +283,6 @@ namespace CmpFuzzyPSI
 
     Proto PeqtSender::run(BitVector& data, BitVector& output, Socket& chl, u64 mNumThreads){
         // Set mod p to be 2^[log(eqlength)], then need to compute mod during execution
-        // DEBUG_LOG("mDataSize: " << mDataSize << " mEqLength: " << mEqLength);
         auto w = BitVector(mDataSize*mEqLength);
         auto w_recv = BitVector(mDataSize*mEqLength);
         std::vector<u8> modp_Share(mDataSize,0);
@@ -298,10 +290,6 @@ namespace CmpFuzzyPSI
         u64 modlength = oc::log2ceil(mEqLength);
         u64 mod = 1 << modlength;
         u64 mod_min_1 = mod-1;
-
-        // for (u64 j=0; j < mEqLength; j++){
-        //     data[j] = j%2;
-        // }
 
         w = data ^ convert_bit;
         macoro::sync_wait(chl.send(w));
@@ -315,8 +303,6 @@ namespace CmpFuzzyPSI
                 else
                     modp_Share[i] += (1-convert_val[i*mEqLength+j]);
             }
-            // if (i<1)
-            //     std::cout << "modp_Share: " << (u64)modp_Share[i] <<std::endl;
             modp_Share[i] = modp_Share[i] + vose_val[i];
         }
 
@@ -327,8 +313,6 @@ namespace CmpFuzzyPSI
             u8 idx = (modp_Share_recv[i] + modp_Share[i]) & mod_min_1;
             output[i] = vose_table[i*mod + idx];
         }
-
-        // macoro::sync_wait(chl.send(std::move(vose_val)));
 
         co_return;
     }
@@ -342,10 +326,6 @@ namespace CmpFuzzyPSI
         u64 mod = 1 << modlength;
         u64 mod_min_1 = mod-1;
 
-        // for (u64 j=0; j < mEqLength; j++){
-        //     data[j] = j%2;
-        // }
-
         w = data ^ convert_bit;
         macoro::sync_wait(chl.recv(w_recv));
         macoro::sync_wait(chl.send(w));
@@ -358,8 +338,6 @@ namespace CmpFuzzyPSI
                 else
                     modp_Share[i] -= convert_val[i*mEqLength+j];
             }
-            // if (i<1)
-            //     std::cout << "modp_Share: " << (u64)modp_Share[i] <<std::endl;
             modp_Share[i] = vose_val[i] + modp_Share[i];
         }
 
@@ -371,12 +349,6 @@ namespace CmpFuzzyPSI
             output[i] = vose_table[i*mod + idx];
         }
 
-        // std::vector<u8> vose_val_recv(mDataSize,0);
-        // macoro::sync_wait(chl.recv(vose_val_recv));
-        // for (u64 i=0; i < mDataSize; i++){
-        //     if (modp_Share_recv[i] + modp_Share[i] == vose_val_recv[i] + vose_val[i])
-        //         std::cout << "item match: " << i <<std::endl;
-        // }
         co_return;
     }
     

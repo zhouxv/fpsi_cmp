@@ -184,7 +184,7 @@ public:
           msg.resize(msg.size() + mOtExtRecver->baseOtCount());
           co_await (mOtExtSender->send(msg, prng, chl));
 
-          mOtExtRecver->setBaseOts(span<std::array<block, 2>>(msg).subspan(
+          mOtExtRecver->setBaseOts(oc::span<std::array<block, 2>>(msg).subspan(
               msg.size() - mOtExtRecver->baseOtCount(),
               mOtExtRecver->baseOtCount()));
           msg.resize(msg.size() - mOtExtRecver->baseOtCount());
@@ -259,7 +259,7 @@ public:
 
   // Set the externally generated base OTs. This choice
   // bits must be the one return by sampleBaseChoiceBits(...).
-  void setSilentBaseOts(span<std::array<block, 2>> sendBaseOts, const VecF &b) {
+  void setSilentBaseOts(oc::span<std::array<block, 2>> sendBaseOts, const VecF &b) {
     if ((u64)sendBaseOts.size() != silentBaseOtCount())
       throw RTE_LOC;
 
@@ -609,7 +609,7 @@ public:
           co_await mOtExtRecver->receive(choice, msg, prng, chl);
 
           mOtExtSender->setBaseOts(
-              span<block>(msg).subspan(msg.size() - mOtExtSender->baseOtCount(),
+              oc::span<block>(msg).subspan(msg.size() - mOtExtSender->baseOtCount(),
                                        mOtExtSender->baseOtCount()),
               bb);
 
@@ -756,7 +756,7 @@ public:
 
   // Set the externally generated base OTs. This choice
   // bits must be the one return by sampleBaseChoiceBits(...).
-  void setSilentBaseOts(span<block> recvBaseOts, VecF &baseA) {
+  void setSilentBaseOts(oc::span<block> recvBaseOts, VecF &baseA) {
     if (isConfigured() == false)
       throw std::runtime_error("configure(...) must be called first.");
 

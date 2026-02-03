@@ -31,8 +31,6 @@ namespace CmpFuzzyPSI{
         u64 orgSize;
         AltModPrf::KeyType prfKey;
 
-        //random VOLE instances, sScalar * rMask = rMask_share[r] + rMask_share[s], GF(128)
-        //random VOLE instances, rScalar * sMask = sMask_share[r] + sMask_share[s], GF(128)
         block sScalar;
         std::vector<block> sMask;
         std::vector<block> sMask_share;

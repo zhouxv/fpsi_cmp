@@ -24,7 +24,6 @@ namespace CmpFuzzyPSI
         } else{
             throw std::runtime_error("mIMTSender::setUp unsupported metric");
         }
-        //tobeadded
         // e_r * e_s = d_r + d_s
         e.resize(mShareSize); 
         d.resize(mShareSize);
@@ -36,36 +35,19 @@ namespace CmpFuzzyPSI
         mImt_e_Share.resize(mOutputSize*2);
         mImt_d_Share.resize(mOutputSize*2);
 
-        for (u64 i=0; i<100; i++){
-            e[i] = 0;
-            d[i] = 1;
-            e_and[i] = 0;
-            d_and[i] = 1;
-            mImt_e_Share[i] = 0;
-            mImt_d_Share[i] = 1;
-        }
+        u64 num_triples = mShareSize + 3*mShareSize + mOutputSize*2;
+        bool silent = true;
+        Triples triples_0(num_triples, silent);
 
-        // u64 totallAndSize = mShareSize + 3*mShareSize + mOutputSize*2;
-        // IknpOtExtReceiver recver;
+        macoro::sync_wait(triples_0.gen0(chl));
+        macoro::sync_wait(trans_andpair0(chl, triples_0));
 
-        // auto choice = BitVector(totallAndSize);
-        // prng.get(choice.data(), choice.sizeBytes());
-        // std::vector<block> data_recv(totallAndSize);
-        // sync_wait(recver.receive(choice, data_recv, prng, chl));
-
-        // u64 preidx = mShareSize + 3*mShareSize;
-        // for (u64 i=0; i < totallAndSize; i++){
-        //     if (i < mShareSize){
-        //         e[i] = choice[i];
-        //         d[i] = data_recv[i].data()[0] & 1;
-        //     } else if (i >= mShareSize && i < 3*mShareSize + mShareSize){
-        //         e_and[i - mShareSize] = choice[i];
-        //         d_and[i - mShareSize] = data_recv[i].data()[0] & 1;
-        //     } else {
-        //         mImt_e_Share[i - preidx] = choice[i];
-        //         mImt_d_Share[i - preidx] = data_recv[i].data()[0] & 1;
-        //     }
-        // }
+        e.copy(triples_0.b, 0, mShareSize);
+        d.copy(triples_0.c, 0, mShareSize);
+        e_and.copy(triples_0.b, mShareSize, 3*mShareSize);
+        d_and.copy(triples_0.c, mShareSize, 3*mShareSize);
+        mImt_e_Share.copy(triples_0.b, 4*mShareSize, mOutputSize*2);
+        mImt_d_Share.copy(triples_0.c, 4*mShareSize, mOutputSize*2);
 
         if (isImplement){
             // e,d e_and,d_and mImt_e_Share, mImt_d_Share are random AND shares
@@ -95,11 +77,8 @@ namespace CmpFuzzyPSI
             for (u64 i=0; i<mShareSize; i++){
                 mask[i] = e_and[3*i] ^ e_and[3*i+2];
             }
-            // DEBUG_LOG("IMT [Sender] setUp step 2");
             sync_wait(chl.send(std::move(mask)));
-            // DEBUG_LOG("IMT [Sender] setUp step 3");
             sync_wait(chl.recv(recvmask));
-            // DEBUG_LOG("IMT [Sender] comm end");
             for (u64 i=0; i<mShareSize; i++){
                 d_and[3*i+2] = (recvmask[i] & e_and[3*i+2]);
             }
@@ -111,7 +90,6 @@ namespace CmpFuzzyPSI
 
     Proto mIMTReceiver::setUp(u64 tablesize, u64 dim, u64 delta, u64 metric, u64 Cmp_len, PRNG& prng, Socket& chl, u64 mNumThreads)
     {
-        // DEBUG_LOG("mIMTReceiver::setUp called with tablesize=" << tablesize << ", dim=" << dim << ", metric=" << metric << ", Cmp_len=" << Cmp_len);
         mTableSize = tablesize;
         mDim = dim;
         mDelta = delta;
@@ -129,7 +107,6 @@ namespace CmpFuzzyPSI
         } else{
             throw std::runtime_error("mIMTSender::setUp unsupported metric");
         }
-        //tobeadded
         // e_r * e_s = d_r + d_s, e[2*mTableSize*mDim]=e[2*mTableSize*mDim+1]
         e.resize(mShareSize);
         d.resize(mShareSize);
@@ -141,34 +118,19 @@ namespace CmpFuzzyPSI
         mImt_e_Share.resize(mOutputSize*2);
         mImt_d_Share.resize(mOutputSize*2);
 
-        for (u64 i=0; i<100; i++){
-            e[i] = 1;
-            d[i] = 1;
-            e_and[i] = 1;
-            d_and[i] = 1;
-            mImt_e_Share[i] = 1;
-            mImt_d_Share[i] = 1;
-        }
+        u64 num_triples = mShareSize + 3*mShareSize + mOutputSize*2;
+        bool silent = true;
+        Triples triples_1(num_triples, silent);
 
-        // u64 totallAndSize = mShareSize + 3*mShareSize + mOutputSize*2;
-        // IknpOtExtSender sender;
+        macoro::sync_wait(triples_1.gen1(chl));
+        macoro::sync_wait(trans_andpair1(chl, triples_1));
 
-        // std::vector<std::array<block, 2>> data_send(totallAndSize);
-        // sync_wait(sender.send(data_send, prng, chl));
-
-        // u64 preidx = mShareSize + 3*mShareSize;
-        // for (u64 i=0; i < totallAndSize; i++){
-        //     if (i < mShareSize){
-        //         d[i] = data_send[i][0].data()[0] & 1;
-        //         e[i] = (data_send[i][1].data()[0] & 1) ^ d[i];
-        //     } else if (i >= mShareSize && i < 3*mShareSize+mShareSize){
-        //         d_and[i - mShareSize] = data_send[i][0].data()[0] & 1;
-        //         e_and[i - mShareSize] = (data_send[i][1].data()[0] & 1) ^ d_and[i - mShareSize];
-        //     } else {
-        //         mImt_d_Share[i - preidx] = data_send[i][0].data()[0] & 1;
-        //         mImt_e_Share[i - preidx] = (data_send[i][1].data()[0] & 1) ^ mImt_d_Share[i - preidx];
-        //     }
-        // }
+        e.copy(triples_1.a, 0, mShareSize);
+        d.copy(triples_1.c, 0, mShareSize);
+        e_and.copy(triples_1.a, mShareSize, 3*mShareSize);
+        d_and.copy(triples_1.c, mShareSize, 3*mShareSize);
+        mImt_e_Share.copy(triples_1.a, 4*mShareSize, mOutputSize*2);
+        mImt_d_Share.copy(triples_1.c, 4*mShareSize, mOutputSize*2);
 
         if (isImplement){
             // e,d e_and,d_and mImt_e_Share, mImt_d_Share are AND shares, (num: mShareSize+ 3*mShareSize+ mOutputSize*2)
@@ -181,7 +143,6 @@ namespace CmpFuzzyPSI
                     mask0[i] = e[2*i] ^ e[2*i+1];
                     e[2*i] = e[2*i+1];
                 }
-                // DEBUG_LOG("IMT [Receiver] setUp step 1");
                 sync_wait(chl.send(std::move(mask0)));
             } else if (mMetric==1){
                 auto mask0 = BitVector(2*masksize);
@@ -200,11 +161,8 @@ namespace CmpFuzzyPSI
             for (u64 i=0; i<mShareSize; i++){
                 mask[i] = e_and[3*i+1] ^ e_and[3*i+2];
             }
-            // DEBUG_LOG("IMT [Receiver] setUp step 2");
             sync_wait(chl.recv(recvmask));
-            // DEBUG_LOG("IMT [Receiver] setUp step 3");
             sync_wait(chl.send(std::move(mask)));
-            // DEBUG_LOG("IMT [Receiver] comm end");
             for (u64 i=0; i<mShareSize; i++){
                 d_and[3*i+2] = (recvmask[i] & e_and[3*i+2]);
             }
@@ -223,8 +181,6 @@ namespace CmpFuzzyPSI
         auto cmp_output = BitVector(mOutputSize*2);
         output.resize(mOutputSize);
 
-        // DEBUG_LOG(" moutputsize: ");
-
         // Generating phase
         for (u64 i=0; i < mCmpsize; i++){
             for (u64 j = 0; j < mCmp_len; j++){
@@ -242,37 +198,6 @@ namespace CmpFuzzyPSI
         v = v_tmp ^ e;
         cmp = (v_tmp & v_s) ^ d;
         eq = v_tmp ^ v_s;
-
-        // v v_s no problem
-        // for (u64 i=0; i < 10; i++){
-        //     std::cout << " v   " << i << ": ";
-        //     for (u64 j=0; j<mCmp_len; j++)
-        //         std::cout << v[i*mCmp_len+j] << " ";
-        //     std::cout << std::endl;
-
-        //     std::cout << "v_s " << i << ": ";
-        //     for (u64 j=0; j<mCmp_len; j++)
-        //         std::cout << v_s[i*mCmp_len+j] << " ";
-        //     std::cout << std::endl;
-
-        //     std::cout << "v_tmp" << i << ": ";
-        //     for (u64 j=0; j<mCmp_len; j++)
-        //         std::cout << v_tmp[i*mCmp_len+j] << " ";
-        //     std::cout << std::endl;
-        // }
-
-        // no problem
-        // for (u64 i=0; i < 15; i++){
-        //     std::cout << "eq  " << i << ": ";
-        //     for (u64 j=0; j<mCmp_len; j++)
-        //         std::cout << eq[i*mCmp_len+j] << " ";
-        //     std::cout << std::endl;
-
-        //     std::cout << "cmp " << i << ": ";
-        //     for (u64 j=0; j<mCmp_len; j++)
-        //         std::cout << cmp[i*mCmp_len+j] << " ";
-        //     std::cout << std::endl;
-        // }
 
         sync_wait(chl.send(std::move(v)));
         // Iteration phase
@@ -328,12 +253,6 @@ namespace CmpFuzzyPSI
             PreStep = (PreStep +1)/2;
         }
 
-        // std::cout << "cmp: ";
-        // for (u64 i=0; i < 15; i++){
-        //     std::cout << cmp[i] << " ";
-        // }
-        // std::cout << std::endl;
-
         if (mMetric==0 || mMetric==2){
             for (u64 i=0; i < mOutputSize; i++){
                 if (Val[2*(mOutputSize - i -1)] > Val[2*(mOutputSize - i -1)+1]){ // reverse the output
@@ -348,16 +267,10 @@ namespace CmpFuzzyPSI
         } else {
             for (u64 i=0; i < mOutputSize/2; i++){
 
-                // if ( mOutputSize/2-i-1 < 5 )
-                //     std::cout << cmp[(3*i)*mCmp_len] << " " << cmp[(3*i+1)*mCmp_len] << " " 
-                //     << cmp[(3*i+2)*mCmp_len] << std::endl;
-
                 if (Val[3*(mOutputSize/2 - i -1)+1] > Val[3*(mOutputSize/2 - i -1)+2]){ // reverse the output
                     cmp_output[4*i+1] = cmp[3*i*mCmp_len];
                     cmp_output[4*i] = cmp[(3*i+1)*mCmp_len];
-                    // if ( mOutputSize/2-i-1 < 5 ) 
-                    //     std::cout << mOutputSize/2-i-1 << " "
-                    //     << Val[3*(mOutputSize/2 - i -1)+1] << " " << Val[3*(mOutputSize/2 - i -1)+2] << std::endl;
+
                 } else{ // reverse the input
                     cmp_output[4*i+1] = !cmp[3*i*mCmp_len];
                     cmp_output[4*i] = !cmp[(3*i+1)*mCmp_len];
@@ -366,17 +279,10 @@ namespace CmpFuzzyPSI
                 if (Val[3*(mOutputSize/2 - i -1)] > Val[3*(mOutputSize/2 - i -1)+2]){ // reverse the output
                     cmp_output[4*i+3] = cmp[(3*i)*mCmp_len];
                     cmp_output[4*i+2] = cmp[(3*i+2)*mCmp_len];
-                    // if ( mOutputSize/2-i-1 < 5 ) 
-                    //     std::cout << mOutputSize/2-i-1 << " "
-                    //     << Val[3*(mOutputSize/2 - i -1)] << " " << Val[3*(mOutputSize/2 - i -1)+1] << std::endl;
                 } else{ // reverse the input
                     cmp_output[4*i+3] = !cmp[(3*i)*mCmp_len];
                     cmp_output[4*i+2] = !cmp[(3*i+2)*mCmp_len];
                 }
-
-                // if ( mOutputSize/2-i-1 < 5 )
-                //     std::cout << cmp_output[4*i+3] << " " << cmp_output[4*i+2] << " " 
-                //     << cmp_output[4*i+1] << " " << cmp_output[4*i] << std::endl;
             }
         }
 
@@ -385,13 +291,6 @@ namespace CmpFuzzyPSI
             cmp_output[i] = cmp_output[mOutputSize*2-i-1];
             cmp_output[mOutputSize*2-i-1] = tmp;
         }
-
-
-        // std::cout << "cmp_output: ";
-        // for (u64 i=0; i < 20; i++){
-        //     std::cout << cmp_output[i] << " ";
-        // }
-        // std::cout << std::endl;
 
         // output phase
         auto tem_Imtshare = BitVector(mOutputSize*2);
@@ -436,24 +335,10 @@ namespace CmpFuzzyPSI
         auto cmp_output = BitVector(mOutputSize*2);
         output.resize(mOutputSize);
 
-        // DEBUG_LOG(" moutputsize: " << output.size());
-
         // generating phase
         sync_wait(chl.recv(v));
         cmp = (e & v) ^ d;
         eq = e;
-
-        // for (u64 i=0; i < 10; i++){
-        //     std::cout << "eq  " << i << ": ";
-        //     for (u64 j=0; j<mCmp_len; j++)
-        //         std::cout << eq[i*mCmp_len+j] << " ";
-        //     std::cout << std::endl;
-
-        //     std::cout << "cmp " << i << ": ";
-        //     for (u64 j=0; j<mCmp_len; j++)
-        //         std::cout << cmp[i*mCmp_len+j] << " ";
-        //     std::cout << std::endl;
-        // }
         // Iteration phase
 
         for (u64 i=0; i < mShareSize/2; i++){
@@ -525,12 +410,6 @@ namespace CmpFuzzyPSI
             cmp_output[i] = cmp_output[mOutputSize*2-i-1];
             cmp_output[mOutputSize*2-i-1] = tmp;
         }
-
-        // std::cout << "cmp_output: ";
-        // for (u64 i=0; i < 20; i++){
-        //     std::cout << cmp_output[i] << " ";
-        // }
-        // std::cout << std::endl;
 
         // output phase
         auto tem_Imtshare = BitVector(mOutputSize*2);

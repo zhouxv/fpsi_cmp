@@ -6,6 +6,7 @@
 #include "psi/Defines.h"
 #include "libOTe/TwoChooseOne/Iknp/IknpOtExtReceiver.h"
 #include "libOTe/TwoChooseOne/Iknp/IknpOtExtSender.h"
+#include "andpair/triple.h"
 
 using namespace oc;
 
