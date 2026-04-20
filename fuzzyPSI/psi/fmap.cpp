@@ -75,56 +75,65 @@ namespace CmpFuzzyPSI
         mDelta = delta;
         mLorH = LorH;
 
-        orgSize = osuCrypto::log2ceil(mDelta * 2 * (mSenderSize+2));
+        if (mLorH == 0){
+            myExpansionRate = 1;
+            anotherExpansionRate = 1;
+            orgSize = osuCrypto::log2ceil(mDelta * 2 * (mSenderSize+2));
 
-        // toBeAdded
-        //random VOLE instances
-        u64 numVole = senderSize + receiverSize;
-        SilentVoleSender<block, block> sender1;
-        SilentVoleReceiver<block, block> receiver2;
+            // toBeAdded
+            //random VOLE instances
+            u64 numVole = senderSize + receiverSize;
+            SilentVoleSender<block, block> sender1;
+            SilentVoleReceiver<block, block> receiver2;
 
-        AlignedUnVector<block> A(numVole);
-        AlignedUnVector<block> D(numVole);
-        AlignedUnVector<block> C(numVole);
-        block B_DELTA = prng.get();
+            AlignedUnVector<block> A(numVole);
+            AlignedUnVector<block> D(numVole);
+            AlignedUnVector<block> C(numVole);
+            block B_DELTA = prng.get();
 
-        sender1.configure(numVole, SilentBaseType::Base);
-        receiver2.configure(numVole, SilentBaseType::Base);
+            sender1.configure(numVole, SilentBaseType::Base);
+            receiver2.configure(numVole, SilentBaseType::Base);
 
-        macoro::sync_wait(sender1.genSilentBaseOts(prng, chl, B_DELTA));
-        macoro::sync_wait(receiver2.genSilentBaseOts(prng, chl));
+            macoro::sync_wait(sender1.genSilentBaseOts(prng, chl, B_DELTA));
+            macoro::sync_wait(receiver2.genSilentBaseOts(prng, chl));
 
-        macoro::sync_wait(sender1.silentSend(B_DELTA, D, prng, chl));
-        macoro::sync_wait(receiver2.silentReceive(A, C, prng, chl));
+            macoro::sync_wait(sender1.silentSend(B_DELTA, D, prng, chl));
+            macoro::sync_wait(receiver2.silentReceive(A, C, prng, chl));
 
-        sMask.resize(senderSize + receiverSize);
-        sMask_share.resize(senderSize + receiverSize);
-        rMask_share.resize(senderSize + receiverSize);
+            sMask.resize(senderSize + receiverSize);
+            sMask_share.resize(senderSize + receiverSize);
+            rMask_share.resize(senderSize + receiverSize);
 
-        sScalar = B_DELTA;
-        rMask_share.assign(D.begin(), D.end());
-        sMask.assign(A.begin(), A.end());
-        sMask_share.assign(C.begin(), C.end());
+            sScalar = B_DELTA;
+            rMask_share.assign(D.begin(), D.end());
+            sMask.assign(A.begin(), A.end());
+            sMask_share.assign(C.begin(), C.end());
 
-        //OKVS 1
-        auto hashingSeed = block{};
-        auto type = PaxosParam::GF128;
-        hashingSeed = prng.get();
-		mPaxos.init(2 * mRecverSize * mDim, 1 << 14, 3, 40, type, hashingSeed);
-		macoro::sync_wait(chl.send(std::move(hashingSeed)));
+            //OKVS 1
+            auto hashingSeed = block{};
+            auto type = PaxosParam::GF128;
+            hashingSeed = prng.get();
+            mPaxos.init(2 * mRecverSize * mDim, 1 << 14, 3, 40, type, hashingSeed);
+            macoro::sync_wait(chl.send(std::move(hashingSeed)));
 
-        //OPRF-so 1
-        macoro::sync_wait(mOprfsoSender_0.setUp(mRecverSize * mDim, prng, chl, 1));
-        prfKey = mOprfsoSender_0.mAltModWPrfSender.getKey();
+            //OPRF-so 1
+            macoro::sync_wait(mOprfsoSender_0.setUp(mRecverSize * mDim, prng, chl, 1));
+            prfKey = mOprfsoSender_0.mAltModWPrfSender.getKey();
 
-        //OKVS 2
-        macoro::sync_wait(chl.recv(paxos.mSeed));
-		paxos.init(2 * mSenderSize * mDim, 1 << 14, 3, 40, type, paxos.mSeed);
+            //OKVS 2
+            macoro::sync_wait(chl.recv(paxos.mSeed));
+            paxos.init(2 * mSenderSize * mDim, 1 << 14, 3, 40, type, paxos.mSeed);
 
-        //OPRF-so 1
-        macoro::sync_wait(mOprfsoReceiver_1.setUp(mSenderSize * mDim, prng, chl));
+            //OPRF-so 1
+            macoro::sync_wait(mOprfsoReceiver_1.setUp(mSenderSize * mDim, prng, chl));
+        } else if (mLorH == 1) {
+            myExpansionRate = mDim + 1;
+            anotherExpansionRate = mDim + 1;
+            orgSize = osuCrypto::log2ceil(mDelta * (mDim + 1));
+        }
 
         co_return;
+        
     }
 
     Proto FmapReceiver::setUp(u64 senderSize, u64 receiverSize, u64 dim, u64 delta, u64 LorH, PRNG& prng, Socket& chl, u64 mNumThreads){
@@ -134,199 +143,242 @@ namespace CmpFuzzyPSI
         mDelta = delta;
         mLorH = LorH;
 
-        orgSize = osuCrypto::log2ceil(mDelta * 2 * (mSenderSize+2));
+        if (mLorH == 0){
+            myExpansionRate = 1;
+            anotherExpansionRate = 1;
+            orgSize = osuCrypto::log2ceil(mDelta * 2 * (mSenderSize+2));
 
-        //random VOLE instances, toBeAdded
-        u64 numVole = senderSize + receiverSize;
-        SilentVoleSender<block, block> sender2;
-        SilentVoleReceiver<block, block> receiver1;
+            //random VOLE instances, toBeAdded
+            u64 numVole = senderSize + receiverSize;
+            SilentVoleSender<block, block> sender2;
+            SilentVoleReceiver<block, block> receiver1;
 
-        AlignedUnVector<block> A(numVole);
-        AlignedUnVector<block> D(numVole);
-        AlignedUnVector<block> C(numVole);
-        block B_DELTA = prng.get();
+            AlignedUnVector<block> A(numVole);
+            AlignedUnVector<block> D(numVole);
+            AlignedUnVector<block> C(numVole);
+            block B_DELTA = prng.get();
 
-        receiver1.configure(numVole, SilentBaseType::Base);
-        sender2.configure(numVole, SilentBaseType::Base);
+            receiver1.configure(numVole, SilentBaseType::Base);
+            sender2.configure(numVole, SilentBaseType::Base);
 
-        macoro::sync_wait(receiver1.genSilentBaseOts(prng, chl));
-        macoro::sync_wait(sender2.genSilentBaseOts(prng, chl, B_DELTA));
+            macoro::sync_wait(receiver1.genSilentBaseOts(prng, chl));
+            macoro::sync_wait(sender2.genSilentBaseOts(prng, chl, B_DELTA));
 
-        macoro::sync_wait(receiver1.silentReceive(A, C, prng, chl));
-        macoro::sync_wait(sender2.silentSend(B_DELTA, D, prng, chl));
+            macoro::sync_wait(receiver1.silentReceive(A, C, prng, chl));
+            macoro::sync_wait(sender2.silentSend(B_DELTA, D, prng, chl));
 
-        rMask.resize(senderSize + receiverSize);
-        rMask_share.resize(senderSize + receiverSize);
-        sMask_share.resize(senderSize + receiverSize);
+            rMask.resize(senderSize + receiverSize);
+            rMask_share.resize(senderSize + receiverSize);
+            sMask_share.resize(senderSize + receiverSize);
 
-        rScalar = B_DELTA;
-        sMask_share.assign(D.begin(), D.end());
-        rMask.assign(A.begin(), A.end());
-        rMask_share.assign(C.begin(), C.end());
+            rScalar = B_DELTA;
+            sMask_share.assign(D.begin(), D.end());
+            rMask.assign(A.begin(), A.end());
+            rMask_share.assign(C.begin(), C.end());
 
-        //OKVS1
-        auto type = PaxosParam::GF128;
-        macoro::sync_wait(chl.recv(paxos.mSeed));
-		paxos.init(2 * mRecverSize * mDim, 1 << 14, 3, 40, type, paxos.mSeed);
+            //OKVS1
+            auto type = PaxosParam::GF128;
+            macoro::sync_wait(chl.recv(paxos.mSeed));
+            paxos.init(2 * mRecverSize * mDim, 1 << 14, 3, 40, type, paxos.mSeed);
 
-        //OPRF-so 1
-        macoro::sync_wait(mOprfsoReceiver_0.setUp(mRecverSize * mDim, prng, chl));
+            //OPRF-so 1
+            macoro::sync_wait(mOprfsoReceiver_0.setUp(mRecverSize * mDim, prng, chl));
 
-        //OKVS 2
-        auto hashingSeed = block{};
-        hashingSeed = prng.get();
-		mPaxos.init(2 * mSenderSize * mDim, 1 << 14, 3, 40, type, hashingSeed);
-		macoro::sync_wait(chl.send(std::move(hashingSeed)));
+            //OKVS 2
+            auto hashingSeed = block{};
+            hashingSeed = prng.get();
+            mPaxos.init(2 * mSenderSize * mDim, 1 << 14, 3, 40, type, hashingSeed);
+            macoro::sync_wait(chl.send(std::move(hashingSeed)));
 
-        //OPRF-so 2
-        macoro::sync_wait(mOprfsoSender_1.setUp(mSenderSize * mDim, prng, chl, 1));
-        prfKey = mOprfsoSender_1.mAltModWPrfSender.getKey();;
+            //OPRF-so 2
+            macoro::sync_wait(mOprfsoSender_1.setUp(mSenderSize * mDim, prng, chl, 1));
+            prfKey = mOprfsoSender_1.mAltModWPrfSender.getKey();;
+
+        } else if (mLorH == 1) {
+            myExpansionRate = mDim + 1;
+            anotherExpansionRate = mDim + 1;
+            orgSize = osuCrypto::log2ceil(mDelta * (mDim + 1));
+        }
 
         co_return;
+        
     }
 
     Proto FmapSender::fuzzyMap(span<block> inputs, span<block> Identifiers, span<block> oringins, PRNG& prng, Socket& chl, u64 mNumThreads){
 
-        std::vector<block> mAssignments(2*mSenderSize*mDim);
-        std::vector<block> blocksContainInputs(2*mSenderSize*mDim);
-        std::vector<block> mIdentifiers(mSenderSize, ZeroBlock);
-        getID(inputs, mIdentifiers, blocksContainInputs, mAssignments, oringins, prng);
+        if (mLorH == 0){
+            std::vector<block> mAssignments(2*mSenderSize*mDim);
+            std::vector<block> blocksContainInputs(2*mSenderSize*mDim);
+            std::vector<block> mIdentifiers(mSenderSize, ZeroBlock);
+            getID(inputs, mIdentifiers, blocksContainInputs, mAssignments, oringins, prng);
 
-        //Compute ID of receiver
-        //send OKVS
-		std::vector<block> mOKVS(mPaxos.size());
-        mPaxos.solve<block>(blocksContainInputs, mAssignments, mOKVS, &prng, mNumThreads);
-        macoro::sync_wait(chl.send(std::move(mOKVS)));
-        //OPRF-so, sends vole mask
-        std::vector<block> oprfShare_0(mRecverSize*mDim);
-        macoro::sync_wait(mOprfsoSender_0.oprfSo(oprfShare_0, prng, chl));
-        std::vector<block> oprfShare_0_sum(mRecverSize, oc::ZeroBlock);
-        for(u64 i=0; i<mRecverSize; i++){
-            for (u64 j=0; j<mDim; j++){
-                oprfShare_0_sum[i] ^= oprfShare_0[i*mDim+j];
+            //Compute ID of receiver
+            //send OKVS
+            std::vector<block> mOKVS(mPaxos.size());
+            mPaxos.solve<block>(blocksContainInputs, mAssignments, mOKVS, &prng, mNumThreads);
+            macoro::sync_wait(chl.send(std::move(mOKVS)));
+            //OPRF-so, sends vole mask
+            std::vector<block> oprfShare_0(mRecverSize*mDim);
+            macoro::sync_wait(mOprfsoSender_0.oprfSo(oprfShare_0, prng, chl));
+            std::vector<block> oprfShare_0_sum(mRecverSize, oc::ZeroBlock);
+            for(u64 i=0; i<mRecverSize; i++){
+                for (u64 j=0; j<mDim; j++){
+                    oprfShare_0_sum[i] ^= oprfShare_0[i*mDim+j];
+                }
+                oprfShare_0_sum[i] ^= sMask[i]; // the first mRecverSize instances of VOLE
             }
-            oprfShare_0_sum[i] ^= sMask[i]; // the first mRecverSize instances of VOLE
-        }
-        macoro::sync_wait(chl.send(std::move(oprfShare_0_sum)));
-        //receive encrptied IDs and decrypt and send back
-        std::vector<block> encryID_rec(mRecverSize);
-        macoro::sync_wait(chl.recv(encryID_rec));
-        for(u64 i=0; i<mRecverSize; i++){
-            encryID_rec[i] = sScalar.gf128Mul(encryID_rec[i] ^ sMask_share[i]) ^ rMask_share[i];
-        }
-        macoro::sync_wait(chl.send(std::move(encryID_rec)));
-        //Receiver ID computed
-
-
-        //Compute ID of Sender
-        //Compute blocks
-        std::vector<block> blocksOfInputs(mSenderSize*mDim);
-        for (u64 i=0; i<mSenderSize*mDim; i++){
-            blocksOfInputs[i] = computeBlock(inputs[i], mDelta);
-            blocksOfInputs[i] = block(i % mDim, 0) ^ blocksOfInputs[i];
-        }
-
-        //receive OKVS and decode
-        std::vector<block> decodeVal(mSenderSize*mDim);
-        std::vector<block> recvOKVS(paxos.size());
-		macoro::sync_wait(chl.recv(recvOKVS));
-        paxos.mAddToDecode = true;
-        paxos.decode<block>(blocksOfInputs, decodeVal, recvOKVS, mNumThreads);
-        //OPRF-so and receive VOLE mask, compute vole later
-        std::vector<block> oprfShare_1(mSenderSize*mDim);
-        macoro::sync_wait(mOprfsoReceiver_1.oprfSo(blocksOfInputs, oprfShare_1, prng, chl));
-        std::vector<block> oprfShare_1_sum(mSenderSize);
-        macoro::sync_wait(chl.recv(oprfShare_1_sum)); // the last mSenderSize instances of VOLE
-        //compute encrptied IDs
-        std::vector<block> encryID(mSenderSize, oc::ZeroBlock);
-        for(u64 i=0; i<mSenderSize; i++){
-            oprfShare_1_sum[i] = sScalar.gf128Mul(oprfShare_1_sum[i]) ^ rMask_share[i + mRecverSize];
-            for (u64 j=0; j<mDim; j++){
-                encryID[i] ^= decodeVal[i*mDim+j];
-                oprfShare_1_sum[i] ^= sScalar.gf128Mul(oprfShare_1[i*mDim+j]);
+            macoro::sync_wait(chl.send(std::move(oprfShare_0_sum)));
+            //receive encrptied IDs and decrypt and send back
+            std::vector<block> encryID_rec(mRecverSize);
+            macoro::sync_wait(chl.recv(encryID_rec));
+            for(u64 i=0; i<mRecverSize; i++){
+                encryID_rec[i] = sScalar.gf128Mul(encryID_rec[i] ^ sMask_share[i]) ^ rMask_share[i];
             }
-            encryID[i] = sScalar.gf128Mul(encryID[i] ^ mIdentifiers[i]) ^ oprfShare_1_sum[i] ^ sMask[i + mRecverSize];
-        }
-        macoro::sync_wait(chl.send(std::move(encryID)));
-        std::vector<block> maskedID(mSenderSize);
-        macoro::sync_wait(chl.recv(maskedID));
-        for(u64 i=0; i<mSenderSize; i++){
-            Identifiers[i] = maskedID[i] ^ sMask_share[i + mRecverSize];
+            macoro::sync_wait(chl.send(std::move(encryID_rec)));
+            //Receiver ID computed
+
+
+            //Compute ID of Sender
+            //Compute blocks
+            std::vector<block> blocksOfInputs(mSenderSize*mDim);
+            for (u64 i=0; i<mSenderSize*mDim; i++){
+                blocksOfInputs[i] = computeBlock(inputs[i], mDelta);
+                blocksOfInputs[i] = block(i % mDim, 0) ^ blocksOfInputs[i];
+            }
+
+            //receive OKVS and decode
+            std::vector<block> decodeVal(mSenderSize*mDim);
+            std::vector<block> recvOKVS(paxos.size());
+            macoro::sync_wait(chl.recv(recvOKVS));
+            paxos.mAddToDecode = true;
+            paxos.decode<block>(blocksOfInputs, decodeVal, recvOKVS, mNumThreads);
+            //OPRF-so and receive VOLE mask, compute vole later
+            std::vector<block> oprfShare_1(mSenderSize*mDim);
+            macoro::sync_wait(mOprfsoReceiver_1.oprfSo(blocksOfInputs, oprfShare_1, prng, chl));
+            std::vector<block> oprfShare_1_sum(mSenderSize);
+            macoro::sync_wait(chl.recv(oprfShare_1_sum)); // the last mSenderSize instances of VOLE
+            //compute encrptied IDs
+            std::vector<block> encryID(mSenderSize, oc::ZeroBlock);
+            for(u64 i=0; i<mSenderSize; i++){
+                oprfShare_1_sum[i] = sScalar.gf128Mul(oprfShare_1_sum[i]) ^ rMask_share[i + mRecverSize];
+                for (u64 j=0; j<mDim; j++){
+                    encryID[i] ^= decodeVal[i*mDim+j];
+                    oprfShare_1_sum[i] ^= sScalar.gf128Mul(oprfShare_1[i*mDim+j]);
+                }
+                encryID[i] = sScalar.gf128Mul(encryID[i] ^ mIdentifiers[i]) ^ oprfShare_1_sum[i] ^ sMask[i + mRecverSize];
+            }
+            macoro::sync_wait(chl.send(std::move(encryID)));
+            std::vector<block> maskedID(mSenderSize);
+            macoro::sync_wait(chl.recv(maskedID));
+            for(u64 i=0; i<mSenderSize; i++){
+                Identifiers[i] = maskedID[i] ^ sMask_share[i + mRecverSize];
+            }
+        } else if (mLorH == 1){
+            // std::vector<block> mIdentifiers(mSenderSize * (mDim + 1), ZeroBlock);
+            __uint128_t sideLength = ((mDim+1)*mDelta);
+            oc::AES hasher(oc::toBlock(12345));
+            for (u64 i=0; i<mSenderSize; i++){
+                for (u64 j=0; j < mDim+1; j++){
+                    for (u64 k=0; k < mDim; k++){
+                        __uint128_t tmp = sideLength * ((*(__uint128_t *)&inputs[i*mDim+k] - j*mDim) / sideLength) + j*mDim;
+                        memcpy(&oringins[i*(mDim+1)*mDim + j*mDim+k], &tmp, sizeof(oc::block));
+                        oc::block tmp_block;
+                        memcpy(&tmp_block, &tmp, sizeof(oc::block));
+                        Identifiers[i*(mDim+1)+j]^= hasher.ecbEncBlock(tmp_block); // should be hash value
+                    }
+                }
+            }
+
         }
         
-
         co_await chl.flush();
         co_return;
     }
 
     Proto FmapReceiver::fuzzyMap(span<block> inputs, span<block> Identifiers, PRNG& prng, Socket& chl, u64 mNumThreads){
-        std::vector<block> mAssignments(2*mRecverSize*mDim);
-        std::vector<block> blocksContainInputs(2*mRecverSize*mDim);
-        std::vector<block> mIdentifiers(mRecverSize, ZeroBlock);
-        getID(inputs, mIdentifiers, blocksContainInputs, mAssignments, prng);
+        
+        if (mLorH == 0){
+            std::vector<block> mAssignments(2*mRecverSize*mDim);
+            std::vector<block> blocksContainInputs(2*mRecverSize*mDim);
+            std::vector<block> mIdentifiers(mRecverSize, ZeroBlock);
+            getID(inputs, mIdentifiers, blocksContainInputs, mAssignments, prng);
 
 
-        //Compute ID of receiver
-        //Compute blocks
-        std::vector<block> blocksOfInputs(mRecverSize*mDim);
-        for (u64 i=0; i<mRecverSize*mDim; i++){
-            blocksOfInputs[i] = computeBlock(inputs[i], mDelta);
-            blocksOfInputs[i] = block(i % mDim, 0) ^ blocksOfInputs[i];
-        }
-        //receive OKVS and decode
-        std::vector<block> decodeVal(mRecverSize*mDim);
-        std::vector<block> recvOKVS(paxos.size());
-		macoro::sync_wait(chl.recv(recvOKVS));
-        paxos.mAddToDecode = true;
-        paxos.decode<block>(blocksOfInputs, decodeVal, recvOKVS, mNumThreads);
-        //OPRF-so and receive VOLE mask, compute vole later
-        std::vector<block> oprfShare_0(mRecverSize*mDim);
-        macoro::sync_wait(mOprfsoReceiver_0.oprfSo(blocksOfInputs, oprfShare_0, prng, chl));
-        std::vector<block> oprfShare_0_sum(mRecverSize);
-        macoro::sync_wait(chl.recv(oprfShare_0_sum)); // the first mRecverSize instances of VOLE
-        //compute encrptied IDs
-        std::vector<block> encryID(mRecverSize, oc::ZeroBlock);
-        for(u64 i=0; i<mRecverSize; i++){
-            oprfShare_0_sum[i] = rScalar.gf128Mul(oprfShare_0_sum[i]) ^ sMask_share[i];
-            for (u64 j=0; j<mDim; j++){
-                encryID[i] ^= decodeVal[i*mDim+j];
-                oprfShare_0_sum[i] ^= rScalar.gf128Mul(oprfShare_0[i*mDim+j]);
+            //Compute ID of receiver
+            //Compute blocks
+            std::vector<block> blocksOfInputs(mRecverSize*mDim);
+            for (u64 i=0; i<mRecverSize*mDim; i++){
+                blocksOfInputs[i] = computeBlock(inputs[i], mDelta);
+                blocksOfInputs[i] = block(i % mDim, 0) ^ blocksOfInputs[i];
             }
-            encryID[i] = rScalar.gf128Mul(encryID[i]^mIdentifiers[i]) ^ oprfShare_0_sum[i] ^ rMask[i];
-        }
-        macoro::sync_wait(chl.send(std::move(encryID)));
-        std::vector<block> maskedID(mRecverSize);
-        macoro::sync_wait(chl.recv(maskedID));
-        for(u64 i=0; i<mRecverSize; i++){
-            Identifiers[i] = maskedID[i] ^ rMask_share[i];
-        }
-        //Receiver ID computed
-
-
-        //Compute ID of sender
-        //send OKVS
-		std::vector<block> mOKVS(mPaxos.size());
-        mPaxos.solve<block>(blocksContainInputs, mAssignments, mOKVS, &prng, mNumThreads);
-        macoro::sync_wait(chl.send(std::move(mOKVS)));
-        //OPRF-so, sends vole mask
-        std::vector<block> oprfShare_1(mSenderSize*mDim);
-        macoro::sync_wait(mOprfsoSender_1.oprfSo(oprfShare_1, prng, chl));
-        std::vector<block> oprfShare_1_sum(mSenderSize, oc::ZeroBlock);
-        for(u64 i=0; i<mSenderSize; i++){
-            for (u64 j=0; j<mDim; j++){
-                oprfShare_1_sum[i] ^= oprfShare_1[i*mDim+j];
+            //receive OKVS and decode
+            std::vector<block> decodeVal(mRecverSize*mDim);
+            std::vector<block> recvOKVS(paxos.size());
+            macoro::sync_wait(chl.recv(recvOKVS));
+            paxos.mAddToDecode = true;
+            paxos.decode<block>(blocksOfInputs, decodeVal, recvOKVS, mNumThreads);
+            //OPRF-so and receive VOLE mask, compute vole later
+            std::vector<block> oprfShare_0(mRecverSize*mDim);
+            macoro::sync_wait(mOprfsoReceiver_0.oprfSo(blocksOfInputs, oprfShare_0, prng, chl));
+            std::vector<block> oprfShare_0_sum(mRecverSize);
+            macoro::sync_wait(chl.recv(oprfShare_0_sum)); // the first mRecverSize instances of VOLE
+            //compute encrptied IDs
+            std::vector<block> encryID(mRecverSize, oc::ZeroBlock);
+            for(u64 i=0; i<mRecverSize; i++){
+                oprfShare_0_sum[i] = rScalar.gf128Mul(oprfShare_0_sum[i]) ^ sMask_share[i];
+                for (u64 j=0; j<mDim; j++){
+                    encryID[i] ^= decodeVal[i*mDim+j];
+                    oprfShare_0_sum[i] ^= rScalar.gf128Mul(oprfShare_0[i*mDim+j]);
+                }
+                encryID[i] = rScalar.gf128Mul(encryID[i]^mIdentifiers[i]) ^ oprfShare_0_sum[i] ^ rMask[i];
             }
-            oprfShare_1_sum[i] ^= rMask[i + mRecverSize]; // the last mSenderSize instances of VOLE
-        }
-        macoro::sync_wait(chl.send(std::move(oprfShare_1_sum)));
-        //receive encrptied IDs and decrypt and send back
-        std::vector<block> encryID_rec(mSenderSize);
-        macoro::sync_wait(chl.recv(encryID_rec));
-        for(u64 i=0; i<mSenderSize; i++){
-            encryID_rec[i] = rScalar.gf128Mul(encryID_rec[i] ^ rMask_share[i + mRecverSize]) ^ sMask_share[i + mRecverSize];
-        }
-        macoro::sync_wait(chl.send(std::move(encryID_rec)));
+            macoro::sync_wait(chl.send(std::move(encryID)));
+            std::vector<block> maskedID(mRecverSize);
+            macoro::sync_wait(chl.recv(maskedID));
+            for(u64 i=0; i<mRecverSize; i++){
+                Identifiers[i] = maskedID[i] ^ rMask_share[i];
+            }
+            //Receiver ID computed
 
+
+            //Compute ID of sender
+            //send OKVS
+            std::vector<block> mOKVS(mPaxos.size());
+            mPaxos.solve<block>(blocksContainInputs, mAssignments, mOKVS, &prng, mNumThreads);
+            macoro::sync_wait(chl.send(std::move(mOKVS)));
+            //OPRF-so, sends vole mask
+            std::vector<block> oprfShare_1(mSenderSize*mDim);
+            macoro::sync_wait(mOprfsoSender_1.oprfSo(oprfShare_1, prng, chl));
+            std::vector<block> oprfShare_1_sum(mSenderSize, oc::ZeroBlock);
+            for(u64 i=0; i<mSenderSize; i++){
+                for (u64 j=0; j<mDim; j++){
+                    oprfShare_1_sum[i] ^= oprfShare_1[i*mDim+j];
+                }
+                oprfShare_1_sum[i] ^= rMask[i + mRecverSize]; // the last mSenderSize instances of VOLE
+            }
+            macoro::sync_wait(chl.send(std::move(oprfShare_1_sum)));
+            //receive encrptied IDs and decrypt and send back
+            std::vector<block> encryID_rec(mSenderSize);
+            macoro::sync_wait(chl.recv(encryID_rec));
+            for(u64 i=0; i<mSenderSize; i++){
+                encryID_rec[i] = rScalar.gf128Mul(encryID_rec[i] ^ rMask_share[i + mRecverSize]) ^ sMask_share[i + mRecverSize];
+            }
+            macoro::sync_wait(chl.send(std::move(encryID_rec)));
+        } else if (mLorH == 1){
+            // std::vector<block> mIdentifiers(mSenderSize * (mDim + 1), ZeroBlock);
+            __uint128_t sideLength = ((mDim+1)*mDelta);
+            oc::AES hasher(oc::toBlock(12345));
+            for (u64 i=0; i<mSenderSize; i++){
+                for (u64 j=0; j < mDim+1; j++){
+                    for (u64 k=0; k < mDim; k++){
+                        __uint128_t tmp = sideLength*((*(__uint128_t *)&inputs[i*mDim+k] - j*mDim)/sideLength) + j*mDim;
+                        oc::block tmp_block;
+                        memcpy(&tmp_block, &tmp, sizeof(oc::block));
+                        Identifiers[i*(mDim+1)+j]^= hasher.ecbEncBlock(tmp_block); // should be hash value
+                    }
+                }
+            }
+        }
 
         co_await chl.flush();
         co_return;

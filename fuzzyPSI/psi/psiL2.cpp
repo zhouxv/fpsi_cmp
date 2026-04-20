@@ -27,7 +27,7 @@ Proto FuzzyPsiSender::runL2(span<block> inputs, Socket &chl) {
   sync_wait(chl.send(cuckooSeed));
   sync_wait(chl.flush());
   CuckooIndex<> cuckoo;
-  cuckoo.init(mSenderSize, mSsp, 0, 3);
+  cuckoo.init(mSenderSize * mFmapSender.myExpansionRate, mSsp, 0, 3);
   u64 TableSize = cuckoo.mBins.size();
   // mIMT setup
   u64 Cmp_len = mFmapSender.orgSize;
@@ -85,8 +85,8 @@ Proto FuzzyPsiSender::runL2(span<block> inputs, Socket &chl) {
   DEBUG_LOG("fmap setup done");
 
   Begin = timer.setTimePoint("FuzzyPsiSender::run-fuzzy mapping begin");
-  std::vector<block> Identifiers(mSenderSize);
-  std::vector<block> oringins(mSenderSize * mDim);
+  std::vector<block> Identifiers(mSenderSize * mFmapSender.myExpansionRate);
+  std::vector<block> oringins(mSenderSize * mDim * mFmapSender.myExpansionRate);
   macoro::sync_wait(mFmapSender.fuzzyMap(inputs, Identifiers, oringins, mPrng,
                                          chl, mNumThreads));
   End = timer.setTimePoint("FuzzyPsiSender::fuzzy mapping end");
@@ -101,7 +101,7 @@ Proto FuzzyPsiSender::runL2(span<block> inputs, Socket &chl) {
 
   cuckoo.insert(Identifiers, cuckooSeed);
 
-  std::vector<block> CuckooKeys(mSenderSize); // store bin index
+  std::vector<block> CuckooKeys(mSenderSize * mFmapSender.myExpansionRate); // store bin index
 
   for (u64 i = 0; i < TableSize; ++i) {
     if (!cuckoo.mBins[i].isEmpty()) {
@@ -122,9 +122,9 @@ Proto FuzzyPsiSender::runL2(span<block> inputs, Socket &chl) {
   u64 valsize = peqtLength - mDim - 1 + Cmp_len * mDim + modLLength * mDim;
   u64 valsize_byte = (valsize + 7) / 8;
   std::vector<u8> Opprf_val_data(
-      mSenderSize * valsize_byte); // length d vector in each posotion, length
+      mSenderSize * valsize_byte * mFmapSender.myExpansionRate); // length d vector in each posotion, length
                                    // of vector is peqtLength-d + Cmp_len*d
-  MatrixView<u8> Opprf_val(Opprf_val_data.data(), mSenderSize, valsize_byte);
+  MatrixView<u8> Opprf_val(Opprf_val_data.data(), mSenderSize * mFmapSender.myExpansionRate, valsize_byte);
   auto v_s = BitVector(
       mmIMTSender.mShareSize); // copy the opprf value from TableSize*d*cmp_len
                                // to 3*TableSize*d*cmp_len
@@ -137,13 +137,14 @@ Proto FuzzyPsiSender::runL2(span<block> inputs, Socket &chl) {
   DEBUG_LOG("Opprf inputs defined.");
   RsOpprfReceiver mOpprfReceiver;
   mOpprfReceiver.setTimer(timer);
-  macoro::sync_wait(mOpprfReceiver.receive(mRecverSize * 3, CuckooKeys,
+  macoro::sync_wait(mOpprfReceiver.receive(mRecverSize * 3 * mFmapSender.anotherExpansionRate, CuckooKeys,
                                            Opprf_val, mPrng, mNumThreads, chl));
 
   for (u64 i = 0; i < TableSize; i++) {
     // copy the opprf value to v_s
     if (!cuckoo.mBins[i].isEmpty()) {
       u64 b = cuckoo.mBins[i].idx();
+      u64 dataindex = b/ mFmapSender.myExpansionRate;
       for (u64 j = 0; j < mDim; j++) {
         for (u64 k = 0; k < Cmp_len; k++) {
           u64 byteIndex = (j * Cmp_len + k) / 8;
@@ -153,7 +154,7 @@ Proto FuzzyPsiSender::runL2(span<block> inputs, Socket &chl) {
           v_s[i * 2 * mDim * Cmp_len + (2 * j + 1) * Cmp_len + k] = bit;
         }
 
-        u64 y_hat = ((u64 *)&inputs[b * mDim + j])[0];
+        u64 y_hat = ((u64 *)&inputs[dataindex * mDim + j])[0];
         u64 y_org = ((u64 *)&oringins[b * mDim + j])[0];
         if ((y_hat >= y_org) && (y_hat - y_org >= mDelta))
           cmp_inputs_bin[2 * i * mDim + 2 * j] = (y_hat - mDelta) & m_min_1;
@@ -179,7 +180,7 @@ Proto FuzzyPsiSender::runL2(span<block> inputs, Socket &chl) {
         }
 
         b_prime[i * mDim + j] =
-            mod.sub(a_prime, ((u64 *)&inputs[b * mDim + j])[0]);
+            mod.sub(a_prime, ((u64 *)&inputs[dataindex * mDim + j])[0]);
         u64 tmp = mod.sub(b_prime[i * mDim + j] * b_prime[i * mDim + j],
                           2 * ole_d[i * mDim + j]);
         distance_share[2 * i + 1] = mod.add(distance_share[2 * i + 1], tmp);
@@ -269,15 +270,16 @@ Proto FuzzyPsiSender::runL2(span<block> inputs, Socket &chl) {
   for (u64 i = 0; i < TableSize; i++) {
     if (!cuckoo.mBins[i].isEmpty()) {
       u64 b = cuckoo.mBins[i].idx();
+      u64 dataindex = b/ mFmapSender.myExpansionRate;
       for (u64 j = 0; j < mDim; j++) {
         if (chosbitsRecv[i * mDim + j] ^ peqtoutput[i]) {
           maskedData[2 * (i * mDim + j)] =
-              rotOutput[i * mDim + j][0] ^ inputs[b * mDim + j];
+              rotOutput[i * mDim + j][0] ^ inputs[dataindex * mDim + j];
           maskedData[2 * (i * mDim + j) + 1] = rotOutput[i * mDim + j][1];
         } else {
           maskedData[2 * (i * mDim + j)] = rotOutput[i * mDim + j][0];
           maskedData[2 * (i * mDim + j) + 1] =
-              rotOutput[i * mDim + j][1] ^ inputs[b * mDim + j];
+              rotOutput[i * mDim + j][1] ^ inputs[dataindex * mDim + j];
         }
       }
     } else {
@@ -323,10 +325,10 @@ Proto FuzzyPsiReceiver::runL2(span<block> inputs, Socket &chl) {
   // simple setup
   block cuckooSeed;
   sync_wait(chl.recv(cuckooSeed));
-  auto params = oc::CuckooIndex<>::selectParams(mRecverSize, mSsp, 0, 3);
+  auto params = oc::CuckooIndex<>::selectParams(mRecverSize * mFmapReceiver.myExpansionRate, mSsp, 0, 3);
   u64 TableSize = params.numBins();
   SimpleIndex sIdx;
-  sIdx.init(TableSize, mSenderSize, mSsp, 3);
+  sIdx.init(TableSize, mRecverSize * mFmapReceiver.myExpansionRate, mSsp, 3);
   // mIMT setup
   u64 Cmp_len = mFmapReceiver.orgSize;
   mIMTReceiver mmIMTReceiver;
@@ -388,7 +390,7 @@ Proto FuzzyPsiReceiver::runL2(span<block> inputs, Socket &chl) {
   DEBUG_LOG("fmap setup done");
 
   Begin = timer.setTimePoint("FuzzyPsiReceiver::run-fuzzy mapping begin");
-  std::vector<block> Identifiers(mRecverSize);
+  std::vector<block> Identifiers(mRecverSize * mFmapReceiver.myExpansionRate);
   // std::vector<block> oringins(mRecverSize*mDim);
   macoro::sync_wait(
       mFmapReceiver.fuzzyMap(inputs, Identifiers, mPrng, chl, mNumThreads));
@@ -430,6 +432,7 @@ Proto FuzzyPsiReceiver::runL2(span<block> inputs, Socket &chl) {
     for (u64 p = 0; p < size; ++p) {
       auto hidx = bin[p].hashIdx();
       auto vidx = bin[p].idx();
+      u64 dataindex = vidx/ mFmapReceiver.myExpansionRate;
       Opprf_key[vidx * 3 + hidx] =
           _mm_set_epi64x(i, ((u64 *)&Identifiers[vidx])[0]); // i||identifier
 
@@ -440,14 +443,14 @@ Proto FuzzyPsiReceiver::runL2(span<block> inputs, Socket &chl) {
         u64 bitPosindex = j % Cmp_len;
 
         bool bit =
-            (((u64 *)&inputs[vidx * mDim + dimIndex])[0] >> bitPosindex) & 1;
+            (((u64 *)&inputs[dataindex * mDim + dimIndex])[0] >> bitPosindex) & 1;
         bit ^= mmIMTReceiver.e[2 * i * mDim * Cmp_len + 2 * j];
         Opprf_val(vidx * 3 + hidx, byteIndex) ^= bit << bitIndex;
       }
       u64 preidx = Cmp_len * mDim;
       for (u64 j = 0; j < mDim; j++) {
         u64 tmp =
-            mod.add(((u64 *)&inputs[vidx * mDim + j])[0], ole_a[i * mDim + j]);
+            mod.add(((u64 *)&inputs[dataindex * mDim + j])[0], ole_a[i * mDim + j]);
         for (u64 k = 0; k < modLLength; k++) {
           u64 byteIndex = (j * modLLength + k + preidx) / 8;
           u64 bitIndex = (j * modLLength + k + preidx) % 8;
@@ -471,7 +474,7 @@ Proto FuzzyPsiReceiver::runL2(span<block> inputs, Socket &chl) {
 
   RsOpprfSender mOpprfSender;
   mOpprfSender.setTimer(timer);
-  macoro::sync_wait(mOpprfSender.send(mSenderSize, Opprf_key, Opprf_val, mPrng,
+  macoro::sync_wait(mOpprfSender.send(mSenderSize * mFmapReceiver.anotherExpansionRate, Opprf_key, Opprf_val, mPrng,
                                       mNumThreads, chl));
   End = timer.setTimePoint("FuzzyPsiReceiver::run-opprf end");
 

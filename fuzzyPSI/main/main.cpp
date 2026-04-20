@@ -52,7 +52,7 @@ int main(int argc, char **argv) {
   const u64 delta = cmd.getOr<u64>("delta", 60);
   const u64 metric = cmd.getOr<u64>("metric", 0);
   const u64 numThreads = cmd.getOr<u64>("t", 1);
-  const u64 LorH = cmd.getOr<u64>("LorH", 0);
+  const u64 LorH = cmd.getOr<u64>("LorH", 1);
   const std::string ip = cmd.getOr<std::string>("ip", "localhost");
   const u64 port = cmd.getOr<u64>("port", 1212);
   const u64 trait = cmd.getOr<u64>("trait", 5);

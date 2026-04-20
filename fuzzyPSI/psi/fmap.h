@@ -29,6 +29,8 @@ namespace CmpFuzzyPSI{
         u64 mLorH;
         PRNG mPrng;
         u64 orgSize;
+        u64 myExpansionRate;
+        u64 anotherExpansionRate;
         AltModPrf::KeyType prfKey;
 
         block sScalar;
@@ -58,6 +60,8 @@ namespace CmpFuzzyPSI{
         u64 mLorH;
         PRNG mPrng;
         u64 orgSize;
+        u64 myExpansionRate;
+        u64 anotherExpansionRate;
         AltModPrf::KeyType prfKey;
 
         block rScalar;
