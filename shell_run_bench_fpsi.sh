@@ -15,19 +15,34 @@ trap 'cleanup' INT TERM EXIT
 
 
 ns=(8 12 16)
-dims=(2 6 10 15)
+dims=(2 6 10)
 deltas=(10 60 250)
-metrics=(0 1 2)
+metrics=(1 2)
+# metrics=(0 1 2)
 
 printf "[Size] [Metric] [Dim] [Delta] [Online_Com.(MB)] [Time(s)] [Offline_Com.(MB)] [Offline_Time(s)]\n"
+
+./build/fpsi -dim 10 -delta 60 -metric 0 -nn 16 -trait 5
+echo
 
 for m in "${metrics[@]}"; do
   for n in "${ns[@]}"; do
     for dim in "${dims[@]}"; do
       for delta in "${deltas[@]}"; do
-        ./build/fpsi -dim $dim -delta $delta -metric $m -nn $n -trait 10
+        ./build/fpsi -dim $dim -delta $delta -metric $m -nn $n -trait 5
       done
       echo
     done
   done
 done
+
+# for m in "${metrics[@]}"; do
+#   for n in "${ns[@]}"; do
+#     for dim in "${dims[@]}"; do
+#       for delta in "${deltas[@]}"; do
+#         ./build/fpsi -dim $dim -delta $delta -metric $m -nn $n -trait 5
+#       done
+#       echo
+#     done
+#   done
+# done

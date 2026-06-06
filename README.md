@@ -22,7 +22,6 @@ The following is the structure description of this project. We have provided som
 ├── README.md                          # Project documentation and usage guide
 ├── shell_build_cmd.sh                 # Shell script to build the project executables
 ├── shell_install_dependencies.sh      # Shell script to install required system dependencies
-├── shell_run_bench_fmap.sh            # Benchmark script to reproduce FMAP test results
 └── shell_run_bench_fpsi.sh            # Benchmark script to reproduce FPSI test results
 ```
 
@@ -74,8 +73,6 @@ docker run -dit --name fpsi_cmp --cap-add=NET_ADMIN blueobsidian/fpsi_cmp:latest
 ### 3.2 Run Benchmark Scripts
 
 ```bash
-# Reproduce fmap test results
-./shell_run_bench_fmap.sh
 # Reproduce fpsi test results
 ./shell_run_bench_fpsi.sh
 ```
@@ -94,17 +91,13 @@ docker run -dit --name fpsi_cmp --cap-add=NET_ADMIN blueobsidian/fpsi_cmp:latest
 ### 4.2 Run Benchmark Scripts in project root
 
 ```bash
-# Reproduce fmap test results
-./shell_run_bench_fmap.sh
 # Reproduce fpsi test results
 ./shell_run_bench_fpsi.sh
 ```
 
 ## 5. Usage Guide for Executables
 
-This section describes the usage of the executables located at `./build/fpsi` and `./build/fmap`.
-
-### 5.1 Command-Line Options for `./build/fpsi`
+This section describes the usage of the executables located at `./build/fpsi`.
 
 | Flag | Meaning | Optional Values | Description |
 |:----:|:--------|:----------------|:------------|
@@ -116,17 +109,4 @@ This section describes the usage of the executables located at `./build/fpsi` an
 | **ip** | Server IP | IP address string, default: `"localhost"` | IP address for network communication |
 | **port** | Server Port | Port number, default: `1212` | Port number for connections |
 | **trait** | Number of Trials | Positive integer, default: `5` | Number of test runs for averaging results |
-| **h/help** | Help Message | Flag (no value) | Print help message and usage |
-
-### 5.2 Command-Line Options for `./build/fmap`
-
-| Flag | Meaning | Optional Values | Description |
-|:----:|:--------|:----------------|:------------|
-| **n** | Set Size (direct) | Positive integer, default: `4096` | Direct input set size |
-| **nn** | Set Size (logarithm) | Positive integer, default: `12` | Input set size = 2^nn (overrides -n) |
-| **dim** | Dimension | Positive integer, default: `6` | Dimension of the points |
-| **delta** | Distance Threshold | Positive integer, default: `60` | Distance threshold δ for fuzzy matching |
-| **trait** | Number of Trials | Positive integer, default: `5` | Number of test runs for averaging results |
-| **ip** | Server IP | IP address string, default: `"localhost"` | IP address for network communication |
-| **port** | Server Port | Port number, default: `1213` | Port number for connections |
 | **h/help** | Help Message | Flag (no value) | Print help message and usage |
