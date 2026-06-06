@@ -1,4 +1,4 @@
-# Constrain Data Length: Enhanced Fuzzy PSI Through Secure Interval Membership Testing
+# Fuzzy PSI Through Secure Interval Membership Testing
 
 Fuzzy PSI extends the conventional Private Set Intersection (PSI) by allowing intersections to be computed based on approximate matches. Concretely, a receiver and a sender each hold a set of d-dimensional points, the receiver learns which points from the sender’s set lie within a distance δ of its own points under a chosen distance metric.
 
