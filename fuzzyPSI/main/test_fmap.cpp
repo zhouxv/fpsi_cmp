@@ -9,7 +9,6 @@
 
 using namespace oc;
 using namespace CmpFuzzyPSI;
-using namespace secJoin;
 
 void printUsage(const char *prog) {
   std::cout << "Usage: " << prog << " [options]\n"
@@ -44,7 +43,6 @@ int main(int argc, char **argv) {
 
   const u64 dim = cmd.getOr<u64>("dim", 6);
   const u64 delta = cmd.getOr<u64>("delta", 60);
-  const u64 LorH = cmd.getOr<u64>("LorH", 0);
   const u64 trait = cmd.getOr<u64>("trait", 5);
   const std::string ip = cmd.getOr<std::string>("ip", "localhost");
   const u64 port = cmd.getOr<u64>("port", 1213);
@@ -90,19 +88,19 @@ int main(int argc, char **argv) {
     sender_sock.join();
     recv_sock.join();
 
-    std::vector<oc::block> send_ID(n), recv_ID(n);
-    std::vector<oc::block> send_oringins(n * dim), recv_oringins(n * dim);
+    std::vector<oc::block> send_ID(n * (dim + 1)), recv_ID(n * (dim + 1));
+    std::vector<oc::block> send_oringins(n * (dim + 1) * dim);
 
     // setup phase
     auto begin0 = timer.setTimePoint("begin");
 
     auto send_setup = [&]() {
       macoro::sync_wait(
-          sender.setUp(n, n, dim, delta, LorH, send_prng, send_chl, 1));
+          sender.setUp(n, n, dim, delta, send_prng, send_chl, 1));
     };
     auto recv_setup = [&]() {
       macoro::sync_wait(
-          recver.setUp(n, n, dim, delta, LorH, recv_prng, recv_chl, 1));
+          recver.setUp(n, n, dim, delta, recv_prng, recv_chl, 1));
     };
     std::thread send_setup_th(send_setup);
     std::thread recv_setup_th(recv_setup);

@@ -19,6 +19,7 @@
 #include "libOTe/TwoChooseOne/Iknp/IknpOtExtSender.h"
 #include "mPeqt/peqt.h"
 #include "ole/ole.h"
+#include "ole/ot_ole.h"
 
 using namespace volePSI;
 using namespace oc;
@@ -33,7 +34,6 @@ struct FuzzyPsiBase {
   u64 mDim = 0;
   u64 mMetric = 0;
   u64 mDelta = 0;
-  u64 mLorH = 0;
 
   PRNG mPrng;
   bool mCompress = true;
@@ -41,10 +41,19 @@ struct FuzzyPsiBase {
   u64 mMaskSize = 0;
   bool mUseReducedRounds = false;
   bool mDebug = false;
+  std::string mL2OfflineCachePath;
+  bool mL2OfflineOnly = false;
 
   void init(u64 senderSize, u64 recverSize, u64 statSecParam, u64 dim,
-            u64 metric, u64 delta, u64 LorH, block seed, u64 numThreads,
+            u64 metric, u64 delta, block seed, u64 numThreads,
             bool useReducedRounds = false);
+
+  // The cache contains secret, one-time preprocessing material. A cache is
+  // written only by an offline-only run and is atomically renamed after load.
+  void setL2OfflineCache(std::string path, bool offlineOnly) {
+    mL2OfflineCachePath = std::move(path);
+    mL2OfflineOnly = offlineOnly;
+  }
 };
 } // namespace details
 

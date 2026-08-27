@@ -29,6 +29,9 @@ void printUsage(const char *prog) {
             << "    -port <N>       : Server port number, default: 1212\n"
             << "    -trait <N>      : Number of trials for averaging results, "
                "default: 5\n"
+            << "    -offlineCache <dir> : One-time L2 offline-material cache\n"
+            << "    -offlineOnly    : Generate L2 cache then exit (requires "
+               "-offlineCache)\n"
             << "    -h/--help       : Print this help message\n";
 }
 
@@ -52,10 +55,24 @@ int main(int argc, char **argv) {
   const u64 delta = cmd.getOr<u64>("delta", 60);
   const u64 metric = cmd.getOr<u64>("metric", 0);
   const u64 numThreads = cmd.getOr<u64>("t", 1);
-  const u64 LorH = cmd.getOr<u64>("LorH", 1);
   const std::string ip = cmd.getOr<std::string>("ip", "localhost");
   const u64 port = cmd.getOr<u64>("port", 1212);
   const u64 trait = cmd.getOr<u64>("trait", 5);
+  const std::string offlineCache =
+      cmd.getOr<std::string>("offlineCache", "");
+  const bool offlineOnly = cmd.isSet("offlineOnly");
+  if (offlineOnly && offlineCache.empty()) {
+    std::cerr << "-offlineOnly requires -offlineCache <dir>\n";
+    return 1;
+  }
+  if (!offlineCache.empty() && metric != 2) {
+    std::cerr << "offline cache currently supports only L2\n";
+    return 1;
+  }
+  if (!offlineCache.empty() && trait != 1) {
+    std::cerr << "offline cache is one-time material; use -trait 1\n";
+    return 1;
+  }
   std::string addr = ip + ":" + std::to_string(port);
 
   vector<double> online_times(trait), online_commus(trait),
@@ -65,8 +82,12 @@ int main(int argc, char **argv) {
     CmpFuzzyPSI::FuzzyPsiSender sender;
     CmpFuzzyPSI::FuzzyPsiReceiver receiver;
     block seed = oc::toBlock(123);
-    sender.init(n, n, 40, dim, metric, delta, LorH, seed, numThreads, false);
-    receiver.init(n, n, 40, dim, metric, delta, LorH, seed, numThreads, false);
+    sender.init(n, n, 40, dim, metric, delta, seed, numThreads, false);
+    receiver.init(n, n, 40, dim, metric, delta, seed, numThreads, false);
+    if (!offlineCache.empty()) {
+      sender.setL2OfflineCache(offlineCache, offlineOnly);
+      receiver.setL2OfflineCache(offlineCache, offlineOnly);
+    }
 
     // generateinput data
     std::vector<block> sender_inputs(n * dim);
@@ -120,6 +141,12 @@ int main(int argc, char **argv) {
     std::thread recv_run_th(recv_run);
     sender_run_th.join();
     recv_run_th.join();
+
+    if (offlineOnly) {
+      std::cout << "L2 offline material generated in " << offlineCache
+                << " (one-time use)\n";
+      return 0;
+    }
 
     online_times[i] = receiver.online_time / 1000.0;
     online_commus[i] = receiver.online_commu / 1024.0 / 1024.0;

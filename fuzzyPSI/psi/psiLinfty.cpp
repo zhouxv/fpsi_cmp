@@ -11,7 +11,7 @@ struct NoHash {
 
 void details::FuzzyPsiBase::init(u64 senderSize, u64 recverSize,
                                  u64 statSecParam, u64 dim, u64 metric,
-                                 u64 delta, u64 LorH, block seed,
+                                 u64 delta, block seed,
                                  u64 numThreads, bool useReducedRounds) {
   mSenderSize = senderSize;
   mRecverSize = recverSize;
@@ -19,7 +19,6 @@ void details::FuzzyPsiBase::init(u64 senderSize, u64 recverSize,
   mDim = dim;
   mMetric = metric;
   mDelta = delta;
-  mLorH = LorH;
   u64 buffersize = 256;
   if (senderSize >= 65536)
     // buffersize = u64(16384);
@@ -73,7 +72,7 @@ Proto FuzzyPsiSender::runLinfty(span<block> inputs, Socket &chl) {
   FmapSender mFmapSender;
   mFmapSender.setTimer(timer);
   macoro::sync_wait(mFmapSender.setUp(mSenderSize, mRecverSize, mDim, mDelta,
-                                      mLorH, mPrng, chl, mNumThreads));
+                                      mPrng, chl, mNumThreads));
   // cuckoo setup
   // std::cout << mSenderSize * mFmapSender.myExpansionRate << std::endl;
   block cuckooSeed = mPrng.get();
@@ -313,7 +312,7 @@ Proto FuzzyPsiReceiver::runLinfty(span<block> inputs, Socket &chl) {
   FmapReceiver mFmapReceiver;
   mFmapReceiver.setTimer(timer);
   macoro::sync_wait(mFmapReceiver.setUp(mSenderSize, mRecverSize, mDim, mDelta,
-                                        mLorH, mPrng, chl, mNumThreads));
+                                        mPrng, chl, mNumThreads));
   // simple hash setup
   block cuckooSeed;
   sync_wait(chl.recv(cuckooSeed));

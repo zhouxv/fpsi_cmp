@@ -4,22 +4,16 @@ project(fpsi_cmp)
 set(CMAKE_VERBOSE_MAKEFILE ON)
 set(CMAKE_CXX_STANDARD 20)
 
-# set install paths for volePSI and secure-join
-# find volePSI and secure-join packages, and add include directories
+# Set the volePSI install path and add its include directories.
 set(VOLEPSI_INSTALL_PATH "${CMAKE_SOURCE_DIR}/install/volepsi")
-set(OPRFSO_INSTALL_PATH "${CMAKE_SOURCE_DIR}/install/secure-join")
 
 list(APPEND CMAKE_PREFIX_PATH
     "${VOLEPSI_INSTALL_PATH}"
-    "${OPRFSO_INSTALL_PATH}"
 )
 
 find_package(volePSI REQUIRED)
-find_package(secureJoin REQUIRED)
-include("${OPRFSO_INSTALL_PATH}/lib/cmake/secureJoin/secureJoinTargets.cmake")
 
 include_directories(${VOLEPSI_INSTALL_PATH}/include)
-include_directories(${OPRFSO_INSTALL_PATH}/include/secureJoin)
 
 # Enable debug logging option
 option(ENABLE_DEBUG_LOG "Enable debug logging" OFF)
@@ -49,7 +43,6 @@ endif()
 # set source and header files
 set(FUZZYPSI_DIR ${CMAKE_SOURCE_DIR}/fuzzyPSI/psi)
 set(MPEQT_DIR ${CMAKE_SOURCE_DIR}/fuzzyPSI/mPeqt)
-set(OPRFSO_DIR ${CMAKE_SOURCE_DIR}/fuzzyPSI/oprf_so)
 
 set(SOURCES
     ${FUZZYPSI_DIR}/psiLinfty.cpp
@@ -58,7 +51,8 @@ set(SOURCES
     ${FUZZYPSI_DIR}/mImt.cpp
     ${FUZZYPSI_DIR}/fmap.cpp
     ${MPEQT_DIR}/peqt.cpp
-    ${OPRFSO_DIR}/oprfso.cpp
+    ${MPEQT_DIR}/sspeqt_support.cpp
+    ${CMAKE_SOURCE_DIR}/fuzzyPSI/ole/ot_ole.cpp
     ${CMAKE_SOURCE_DIR}/fuzzyPSI/andpair/triple.cpp
 )
 
@@ -72,27 +66,27 @@ set(COMMON_SOURCES ${SOURCES})
 # handle build options for executables
 option(BUILD_ALL "Build all executables" OFF)
 option(BUILD_MIMT "Build mtest executable" OFF)
-option(BUILD_OPRF "Build oprf executable" OFF)
 option(BUILD_FMAP "Build fmap executable" ON)
 option(BUILD_FPSI "Build fpsi executable" ON)
 option(BUILD_OLE "Build ole executable" ON)
 option(BUILD_ANDPAIR "Build and pair executable" ON)
+option(BUILD_PEQ "Build ssPEQT test executable" OFF)
 
 if(BUILD_ALL)
     set(BUILD_MIMT ON)
-    set(BUILD_OPRF ON)
     set(BUILD_FMAP ON)
     set(BUILD_FPSI ON)
     set(BUILD_OLE ON)
     set(BUILD_ANDPAIR ON)
+    set(BUILD_PEQ ON)
 endif()
 
 message(STATUS "BUILD_MIMT      =${BUILD_MIMT}")
-message(STATUS "BUILD_OPRF      =${BUILD_OPRF}")
 message(STATUS "BUILD_FMAP      =${BUILD_FMAP}")
 message(STATUS "BUILD_FPSI      =${BUILD_FPSI}")
 message(STATUS "BUILD_OLE       =${BUILD_OLE}")
 message(STATUS "BUILD_ANDPAIR   =${BUILD_ANDPAIR}")
+message(STATUS "BUILD_PEQ       =${BUILD_PEQ}")
 
 # create executables for tests and main program
 if(BUILD_MIMT)
@@ -101,16 +95,7 @@ if(BUILD_MIMT)
         ${COMMON_SOURCES}
     )
     target_include_directories(mtest PRIVATE ${HEADERS})
-    target_link_libraries(mtest PRIVATE visa::volePSI visa::secureJoin)
-endif()
-
-if(BUILD_OPRF)
-    add_executable(oprf
-        ${CMAKE_SOURCE_DIR}/fuzzyPSI/main/test_oprf.cpp
-        ${COMMON_SOURCES}
-    )
-    target_include_directories(oprf PRIVATE ${HEADERS})
-    target_link_libraries(oprf PRIVATE visa::volePSI visa::secureJoin)
+    target_link_libraries(mtest PRIVATE visa::volePSI)
 endif()
 
 if(BUILD_FMAP)
@@ -119,7 +104,7 @@ if(BUILD_FMAP)
         ${COMMON_SOURCES}
     )
     target_include_directories(fmap PRIVATE ${HEADERS})
-    target_link_libraries(fmap PRIVATE visa::volePSI visa::secureJoin)
+    target_link_libraries(fmap PRIVATE visa::volePSI)
 endif()
 
 if(BUILD_FPSI)
@@ -128,7 +113,7 @@ if(BUILD_FPSI)
         ${COMMON_SOURCES}
     )
     target_include_directories(fpsi PRIVATE ${HEADERS})
-    target_link_libraries(fpsi PRIVATE visa::volePSI visa::secureJoin)
+    target_link_libraries(fpsi PRIVATE visa::volePSI)
 endif()
 
 if(BUILD_OLE)
@@ -137,7 +122,7 @@ if(BUILD_OLE)
         ${COMMON_SOURCES}
     )
     target_include_directories(ole PRIVATE ${HEADERS})
-    target_link_libraries(ole PRIVATE visa::volePSI visa::secureJoin)
+    target_link_libraries(ole PRIVATE visa::volePSI)
 endif()
 
 if(BUILD_ANDPAIR)
@@ -146,5 +131,14 @@ if(BUILD_ANDPAIR)
         ${COMMON_SOURCES}
     )
     target_include_directories(andpair PRIVATE ${HEADERS})
-    target_link_libraries(andpair PRIVATE visa::volePSI visa::secureJoin)
+    target_link_libraries(andpair PRIVATE visa::volePSI)
+endif()
+
+if(BUILD_PEQ)
+    add_executable(peqt
+        ${CMAKE_SOURCE_DIR}/fuzzyPSI/main/test_peqt.cpp
+        ${COMMON_SOURCES}
+    )
+    target_include_directories(peqt PRIVATE ${HEADERS})
+    target_link_libraries(peqt PRIVATE visa::volePSI)
 endif()

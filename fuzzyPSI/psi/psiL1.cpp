@@ -20,7 +20,7 @@ Proto FuzzyPsiSender::runL1(span<block> inputs, Socket &chl) {
   FmapSender mFmapSender;
   mFmapSender.setTimer(timer);
   macoro::sync_wait(mFmapSender.setUp(mSenderSize, mRecverSize, mDim, mDelta,
-                                      mLorH, mPrng, chl, mNumThreads));
+                                      mPrng, chl, mNumThreads));
   // cuckoo setup
   block cuckooSeed = mPrng.get();
   sync_wait(chl.send(cuckooSeed));
@@ -397,7 +397,7 @@ Proto FuzzyPsiReceiver::runL1(span<block> inputs, Socket &chl) {
   FmapReceiver mFmapReceiver;
   mFmapReceiver.setTimer(timer);
   macoro::sync_wait(mFmapReceiver.setUp(mSenderSize, mRecverSize, mDim, mDelta,
-                                        mLorH, mPrng, chl, mNumThreads));
+                                        mPrng, chl, mNumThreads));
   // simple setup
   block cuckooSeed;
   sync_wait(chl.recv(cuckooSeed));

@@ -26,8 +26,6 @@ void printUsage(const char *prog) {
             //   << "    -t <T>          : Thread count (default: 2)\n"
             << "    -a <addr>       : Address for network mode, e.g., "
                "'localhost:1212'\n"
-            << "    -LorH           : Low diemsnional protocol (1) or High "
-               "dimensional protocol (0)\n"
             << "\n"
             << "Examples:\n"
             << "  " << prog << " -m local\n"
@@ -55,7 +53,6 @@ int main(int argc, char **argv) {
   const u64 delta = cmd.getOr<u64>("delta", 60);
   const u64 metric = cmd.getOr<u64>("metric", 0);
   const u64 numThreads = cmd.getOr<u64>("t", 1);
-  const u64 LorH = cmd.getOr<u64>("LorH", 0);
   const std::string ip = cmd.getOr<std::string>("ip", "localhost");
   const u64 port = cmd.getOr<u64>("port", 1212);
   const u64 trait = cmd.getOr<u64>("trait", 5);
@@ -68,7 +65,7 @@ int main(int argc, char **argv) {
       // sender side
       CmpFuzzyPSI::FuzzyPsiSender sender;
       block seed = oc::toBlock(123);
-      sender.init(n, n, 40, dim, metric, delta, LorH, seed, numThreads, false);
+      sender.init(n, n, 40, dim, metric, delta, seed, numThreads, false);
 
       // connect to receiver
       coproto::Socket chl = coproto::asioConnect(addr, true);
@@ -99,7 +96,7 @@ int main(int argc, char **argv) {
       // receiver side
       CmpFuzzyPSI::FuzzyPsiReceiver receiver;
       block seed = oc::toBlock(123);
-      receiver.init(n, n, 40, dim, metric, delta, LorH, seed, numThreads,
+      receiver.init(n, n, 40, dim, metric, delta, seed, numThreads,
                     false);
 
       // connect to sender

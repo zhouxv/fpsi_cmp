@@ -1,4 +1,5 @@
 #include "psi.h"
+#include "l2_offline_cache.h"
 #include <array>
 #include <future>
 
@@ -11,9 +12,12 @@ Proto FuzzyPsiSender::runL2(span<block> inputs, Socket &chl) {
   u64 modLLength = oc::log2ceil(modL);
   modL = 1 << modLLength;
   ModOps mod(modL);
-  bool doFakeSetup = true;
   long long offlineTime = 0;
   long long onlineTime = 0;
+  const l2cache::Key cacheKey{mSenderSize, mRecverSize, mSsp, mDim,
+                              mMetric,     mDelta};
+  const bool loadOfflineCache =
+      !mL2OfflineCachePath.empty() && !mL2OfflineOnly;
   DEBUG_LOG("begin");
 
   auto Begin = timer.setTimePoint("FuzzyPsiSender::set-up begin");
@@ -21,61 +25,64 @@ Proto FuzzyPsiSender::runL2(span<block> inputs, Socket &chl) {
   FmapSender mFmapSender;
   mFmapSender.setTimer(timer);
   macoro::sync_wait(mFmapSender.setUp(mSenderSize, mRecverSize, mDim, mDelta,
-                                      mLorH, mPrng, chl, mNumThreads));
-  // cuckoo setup
-  block cuckooSeed = mPrng.get();
-  sync_wait(chl.send(cuckooSeed));
-  sync_wait(chl.flush());
+                                      mPrng, chl, mNumThreads));
+  // Cuckoo shape is input-independent; all correlated material below can be
+  // precomputed and consumed once by a later online run.
   CuckooIndex<> cuckoo;
   cuckoo.init(mSenderSize * mFmapSender.myExpansionRate, mSsp, 0, 3);
   u64 TableSize = cuckoo.mBins.size();
-  // mIMT setup
   u64 Cmp_len = mFmapSender.orgSize;
   u64 m_min_1 = (1 << Cmp_len) - 1;
   mIMTSender mmIMTSender;
-  mmIMTSender.setTimer(timer);
-  macoro::sync_wait(mmIMTSender.setUp(TableSize, mDim, mDelta, mMetric, Cmp_len,
-                                      mPrng, chl, mNumThreads));
-  // Second mIMT setup
   mIMTSender mmIMTSender2;
-  mmIMTSender2.setTimer(timer);
-  macoro::sync_wait(mmIMTSender2.setUp(TableSize, 1, mDelta, 0, modLLength,
-                                       mPrng, chl, mNumThreads));
-  // PEQT setup
   u64 peqtLength = kappa + oc::log2ceil(TableSize);
   PeqtSender mPeqtSender;
-  mPeqtSender.setTimer(timer);
-  macoro::sync_wait(mPeqtSender.setUp(TableSize, peqtLength, mPrng, chl));
-  // offline ole, ab=c+d mod L, toBeAdded, modL
   std::vector<u64> ole_b(TableSize * mDim, 0);
   std::vector<u64> ole_d(TableSize * mDim, 0);
+  std::vector<std::array<block, 2>> rotOutput(TableSize * mDim);
+  block cuckooSeed;
 
-  if (doFakeSetup){
-    for (u64 i=0; i<TableSize * mDim; i++){
-      ole_b[i] = mPrng.get<u32>() % modL;
-      ole_d[i] = mPrng.get<u32>() % modL;
-    }
-    cp::sync_wait(chl.send(ole_b));
-    cp::sync_wait(chl.send(ole_d));
+  if (loadOfflineCache) {
+    l2cache::loadAndConsume(l2cache::freshPath(mL2OfflineCachePath, "sender"),
+                            cacheKey, [&](std::ifstream &in) {
+      l2cache::readValue(in, cuckooSeed);
+      l2cache::readImt(in, mmIMTSender);
+      l2cache::readImt(in, mmIMTSender2);
+      l2cache::readPeqt(in, mPeqtSender);
+      l2cache::readVector(in, ole_b);
+      l2cache::readVector(in, ole_d);
+      l2cache::readVector(in, rotOutput);
+    });
   } else {
-    CoeffCtxIntegerMod<u32> mod_ops(modL);
-    for (u64 i=0; i<TableSize * mDim; i++){
-      SilentVoleSenderMod<u32, u32> ole_sender(mod_ops);
-      AlignedUnVector<u32> B(1);
-      u32 DELTA = mPrng.get<u32>() % modL;
-    
-      ole_sender.configure(1, SilentBaseType::BaseExtend, 128, mod_ops);
-      cp::sync_wait(ole_sender.silentSend(DELTA, B, mPrng, chl));
-      ole_b[i] = DELTA;
-      ole_d[i] = mod.sub(0,B[0]);
+    cuckooSeed = mPrng.get();
+    sync_wait(chl.send(cuckooSeed));
+    sync_wait(chl.flush());
+    mmIMTSender.setTimer(timer);
+    macoro::sync_wait(mmIMTSender.setUp(TableSize, mDim, mDelta, mMetric,
+                                        Cmp_len, mPrng, chl, mNumThreads));
+    mmIMTSender2.setTimer(timer);
+    macoro::sync_wait(mmIMTSender2.setUp(TableSize, 1, mDelta, 0,
+                                         modLLength, mPrng, chl, mNumThreads));
+    mPeqtSender.setTimer(timer);
+    macoro::sync_wait(mPeqtSender.setUp(TableSize, peqtLength, mPrng, chl));
+    macoro::sync_wait(
+        otOleSender(TableSize * mDim, modL, mPrng, chl, ole_b, ole_d));
+    IknpOtExtSender senderOutput;
+    sync_wait(senderOutput.send(rotOutput, mPrng, chl));
+    sync_wait(chl.flush());
+    if (!mL2OfflineCachePath.empty()) {
+      l2cache::saveFresh(l2cache::freshPath(mL2OfflineCachePath, "sender"),
+                         cacheKey, [&](std::ofstream &out) {
+        l2cache::writeValue(out, cuckooSeed);
+        l2cache::writeImt(out, mmIMTSender);
+        l2cache::writeImt(out, mmIMTSender2);
+        l2cache::writePeqt(out, mPeqtSender);
+        l2cache::writeVector(out, ole_b);
+        l2cache::writeVector(out, ole_d);
+        l2cache::writeVector(out, rotOutput);
+      });
     }
   }
-
-  // offline ROT output
-  std::vector<std::array<block, 2>> rotOutput(TableSize * mDim);
-  IknpOtExtSender senderOutput;
-  sync_wait(senderOutput.send(rotOutput, mPrng, chl));
-  sync_wait(chl.flush());
   auto End = timer.setTimePoint("FuzzyPsiSender::set-up end");
 
   offlineTime +=
@@ -83,6 +90,8 @@ Proto FuzzyPsiSender::runL2(span<block> inputs, Socket &chl) {
           .count();
   offlineComm = chl.bytesSent() + chl.bytesReceived() - onlineComm;
   DEBUG_LOG("fmap setup done");
+  if (mL2OfflineOnly)
+    co_return;
 
   Begin = timer.setTimePoint("FuzzyPsiSender::run-fuzzy mapping begin");
   std::vector<block> Identifiers(mSenderSize * mFmapSender.myExpansionRate);
@@ -309,10 +318,13 @@ Proto FuzzyPsiReceiver::runL2(span<block> inputs, Socket &chl) {
   u64 modLLength = oc::log2ceil(modL);
   modL = 1 << modLLength;
   ModOps mod(modL);
-  bool doFakeSetup = true;
   long long offlineTime = 0;
   long long onlineTime = 0;
   Timer timer;
+  const l2cache::Key cacheKey{mSenderSize, mRecverSize, mSsp, mDim,
+                              mMetric,     mDelta};
+  const bool loadOfflineCache =
+      !mL2OfflineCachePath.empty() && !mL2OfflineOnly;
 
   DEBUG_LOG("begin");
 
@@ -321,66 +333,66 @@ Proto FuzzyPsiReceiver::runL2(span<block> inputs, Socket &chl) {
   FmapReceiver mFmapReceiver;
   mFmapReceiver.setTimer(timer);
   macoro::sync_wait(mFmapReceiver.setUp(mSenderSize, mRecverSize, mDim, mDelta,
-                                        mLorH, mPrng, chl, mNumThreads));
-  // simple setup
-  block cuckooSeed;
-  sync_wait(chl.recv(cuckooSeed));
+                                        mPrng, chl, mNumThreads));
+  // Cuckoo shape is input-independent; all correlated material below can be
+  // precomputed and consumed once by a later online run.
   auto params = oc::CuckooIndex<>::selectParams(mRecverSize * mFmapReceiver.myExpansionRate, mSsp, 0, 3);
   u64 TableSize = params.numBins();
   SimpleIndex sIdx;
   sIdx.init(TableSize, mRecverSize * mFmapReceiver.myExpansionRate, mSsp, 3);
-  // mIMT setup
   u64 Cmp_len = mFmapReceiver.orgSize;
   mIMTReceiver mmIMTReceiver;
-  mmIMTReceiver.setTimer(timer);
-  macoro::sync_wait(mmIMTReceiver.setUp(TableSize, mDim, mDelta, mMetric,
-                                        Cmp_len, mPrng, chl, mNumThreads));
-  // Second mIMT setup
   mIMTReceiver mmIMTReceiver2;
-  mmIMTReceiver2.setTimer(timer);
-  macoro::sync_wait(mmIMTReceiver2.setUp(TableSize, 1, mDelta, 0, modLLength,
-                                         mPrng, chl, mNumThreads));
-  // PEQT setup
   u64 peqtLength = kappa + oc::log2ceil(TableSize);
   PeqtReceiver mPeqtReceiver;
-  mPeqtReceiver.setTimer(timer);
-  macoro::sync_wait(mPeqtReceiver.setUp(TableSize, peqtLength, mPrng, chl));
-  // offline ole, ab=c+d mod L, toBeAdded, modL
   std::vector<u64> ole_a(TableSize * mDim, 0);
   std::vector<u64> ole_c(TableSize * mDim, 0);
-  
-  if (doFakeSetup){
-    std::vector<u64> ole_b(TableSize * mDim, 0);
-    std::vector<u64> ole_d(TableSize * mDim, 0);
-    cp::sync_wait(chl.recv(ole_b));
-    cp::sync_wait(chl.recv(ole_d));
-    for (u64 i=0; i<TableSize * mDim; i++){
-      ole_a[i] = mPrng.get<u32>() % modL;
-      ole_c[i] = mod.mul(ole_a[i],ole_b[i]);
-      ole_c[i] = mod.sub(ole_c[i],ole_d[i]);
-    }
-  } else {
-    CoeffCtxIntegerMod<u32> mod_ops(modL);
-    for (u64 i=0; i<TableSize * mDim; i++){
-      SilentVoleReceiverMod<u32, u32> ole_receiver(mod_ops);
-      AlignedUnVector<u32> A(1);
-      AlignedUnVector<u32> C(1);
-            
-      ole_receiver.configure(1, SilentBaseType::BaseExtend, 128, mod_ops);
-      cp::sync_wait(ole_receiver.silentReceive(C, A, mPrng, chl));  
-
-      ole_a[i] = C[0];
-      ole_c[i] = A[0];
-    }
-  }
-
-  // offline Output ROT
   std::vector<block> rotOutput(TableSize * mDim);
   BitVector sOutput(TableSize * mDim);
-  IknpOtExtReceiver recverOutput;
-  mPrng.get(sOutput.data(), sOutput.sizeBytes());
-  sync_wait(recverOutput.receive(sOutput, rotOutput, mPrng, chl));
-  sync_wait(chl.flush());
+  block cuckooSeed;
+
+  if (loadOfflineCache) {
+    l2cache::loadAndConsume(l2cache::freshPath(mL2OfflineCachePath, "receiver"),
+                            cacheKey, [&](std::ifstream &in) {
+      l2cache::readValue(in, cuckooSeed);
+      l2cache::readImt(in, mmIMTReceiver);
+      l2cache::readImt(in, mmIMTReceiver2);
+      l2cache::readPeqt(in, mPeqtReceiver);
+      l2cache::readVector(in, ole_a);
+      l2cache::readVector(in, ole_c);
+      l2cache::readVector(in, rotOutput);
+      l2cache::readBitVector(in, sOutput);
+    });
+  } else {
+    sync_wait(chl.recv(cuckooSeed));
+    mmIMTReceiver.setTimer(timer);
+    macoro::sync_wait(mmIMTReceiver.setUp(TableSize, mDim, mDelta, mMetric,
+                                          Cmp_len, mPrng, chl, mNumThreads));
+    mmIMTReceiver2.setTimer(timer);
+    macoro::sync_wait(mmIMTReceiver2.setUp(TableSize, 1, mDelta, 0,
+                                           modLLength, mPrng, chl, mNumThreads));
+    mPeqtReceiver.setTimer(timer);
+    macoro::sync_wait(mPeqtReceiver.setUp(TableSize, peqtLength, mPrng, chl));
+    macoro::sync_wait(
+        otOleReceiver(TableSize * mDim, modL, mPrng, chl, ole_a, ole_c));
+    IknpOtExtReceiver recverOutput;
+    mPrng.get(sOutput.data(), sOutput.sizeBytes());
+    sync_wait(recverOutput.receive(sOutput, rotOutput, mPrng, chl));
+    sync_wait(chl.flush());
+    if (!mL2OfflineCachePath.empty()) {
+      l2cache::saveFresh(l2cache::freshPath(mL2OfflineCachePath, "receiver"),
+                         cacheKey, [&](std::ofstream &out) {
+        l2cache::writeValue(out, cuckooSeed);
+        l2cache::writeImt(out, mmIMTReceiver);
+        l2cache::writeImt(out, mmIMTReceiver2);
+        l2cache::writePeqt(out, mPeqtReceiver);
+        l2cache::writeVector(out, ole_a);
+        l2cache::writeVector(out, ole_c);
+        l2cache::writeVector(out, rotOutput);
+        l2cache::writeBitVector(out, sOutput);
+      });
+    }
+  }
   auto End = timer.setTimePoint("FuzzyPsiReceiver::set-up end");
 
   offlineTime +=
@@ -388,6 +400,13 @@ Proto FuzzyPsiReceiver::runL2(span<block> inputs, Socket &chl) {
           .count();
   offlineComm = chl.bytesSent() + chl.bytesReceived() - onlineComm;
   DEBUG_LOG("fmap setup done");
+  if (mL2OfflineOnly) {
+    online_time = 0;
+    online_commu = 0;
+    offline_commu = offlineComm;
+    offline_time = offlineTime;
+    co_return;
+  }
 
   Begin = timer.setTimePoint("FuzzyPsiReceiver::run-fuzzy mapping begin");
   std::vector<block> Identifiers(mRecverSize * mFmapReceiver.myExpansionRate);

@@ -16,7 +16,9 @@ struct Triples {
   u64 nTriples;
   BitVector a, b, c;
   bool fake = false;
-  bool silent = false;
+  // Cross triples are generated with one native Silent random OT batch.
+  // Retained only for CLI/API compatibility.
+  bool silent = true;
 
   u64 curTriple = 0;
 
