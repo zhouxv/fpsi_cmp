@@ -14,6 +14,14 @@ install_volepsi() {
     printf "################## Building volepsi             ###################\n\n"
     sed -i '37a\ -DENABLE_FOLEAGE=ON' thirdparty/getLibOTe.cmake
     sed -i '61c\ set(libOTe_options silentot silent_vole circuits foleage)' cmake/findDependancies.cmake
+
+    # Download boost 1.86.0, because the automatic download source of the library is too slow
+    mkdir -p out && cd out
+    curl -fL --retry 3 \
+    -o boost_1_86_0.tar.bz2 \
+    'https://sourceforge.net/projects/boost/files/boost/1.86.0/boost_1_86_0.tar.bz2/download'
+    cd ..
+
     python3 build.py -DVOLE_PSI_ENABLE_BOOST=ON
     python3 build.py --install=../../install/volepsi
     cp ./out/build/linux/volePSI/config.h ../../install/volepsi/include/volePSI/config.h

@@ -7,8 +7,10 @@
 #include "debug.h"
 #include "psi/psi.h"
 #include "volePSI/RsOpprf.h"
+#include <fstream>
 #include <iomanip>
 #include <iostream>
+#include <stdexcept>
 #include <vector>
 
 using namespace volePSI;
@@ -29,6 +31,7 @@ void printUsage(const char *prog) {
             << "    -port <N>       : Server port number, default: 1212\n"
             << "    -trait <N>      : Number of trials for averaging results, "
                "default: 5\n"
+            << "    -out <file>     : Append the averaged result to a CSV file\n"
             << "    -offlineCache <dir> : One-time L2 offline-material cache\n"
             << "    -offlineOnly    : Generate L2 cache then exit (requires "
                "-offlineCache)\n"
@@ -58,8 +61,7 @@ int main(int argc, char **argv) {
   const std::string ip = cmd.getOr<std::string>("ip", "localhost");
   const u64 port = cmd.getOr<u64>("port", 1212);
   const u64 trait = cmd.getOr<u64>("trait", 5);
-  const std::string offlineCache =
-      cmd.getOr<std::string>("offlineCache", "");
+  const std::string offlineCache = cmd.getOr<std::string>("offlineCache", "");
   const bool offlineOnly = cmd.isSet("offlineOnly");
   if (offlineOnly && offlineCache.empty()) {
     std::cerr << "-offlineOnly requires -offlineCache <dir>\n";
@@ -73,7 +75,6 @@ int main(int argc, char **argv) {
     std::cerr << "offline cache is one-time material; use -trait 1\n";
     return 1;
   }
-  std::string addr = ip + ":" + std::to_string(port);
 
   vector<double> online_times(trait), online_commus(trait),
       offline_times(trait), offline_commus(trait);
@@ -117,6 +118,7 @@ int main(int argc, char **argv) {
     // connect to receiver
     coproto::Socket send_chl, recv_chl;
     auto init_chl = [&](bool is_server) {
+      std::string addr = ip + ":" + std::to_string(port + i);
       if (is_server) {
         send_chl = coproto::asioConnect(addr, true);
       } else {
@@ -164,13 +166,33 @@ int main(int argc, char **argv) {
   double avg_offline_com =
       accumulate(offline_commus.begin(), offline_commus.end(), 0.0) / trait;
 
-  string mertric_str = (metric == 0) ? "inf" : std::to_string(metric);
+  string metric_str = (metric == 0) ? "inf" : std::to_string(metric);
 
   cout << std::format("{:^5}  𝐿{}  {:^5}  {:^5}  "
                       "{:^10.3f}  {:^10.3f}  {:^10.3f}  {:^10.3f}",
-                      n, mertric_str, dim, delta, avg_online_com,
+                      n, metric_str, dim, delta, avg_online_com,
                       avg_online_time, avg_offline_com, avg_offline_time)
        << endl;
+
+  if (cmd.isSet("out")) {
+    const auto outputPath = cmd.get<std::string>("out");
+    std::ifstream existing(outputPath, std::ios::binary | std::ios::ate);
+    const bool writeHeader = !existing || existing.tellg() == 0;
+    std::ofstream output(outputPath, std::ios::app);
+    if (!output) {
+      throw std::runtime_error("failed to open result file: " + outputPath);
+    }
+    if (writeHeader) {
+      output << "Protocol,Metric,Dim,Delta,Size,Online_Com.(MB),Online(s),"
+                "Offline_Com.(MB),Offline(s)\n";
+    }
+
+    const string csv_metric = (metric == 0) ? "Linf" : "L" + metric_str;
+    output << "fpsi_cmp," << csv_metric << ',' << dim << ',' << delta << ','
+           << n << ',' << std::fixed << std::setprecision(3) << avg_online_com
+           << ',' << avg_online_time << ',' << avg_offline_com << ','
+           << avg_offline_time << '\n';
+  }
 
   return 0;
 }

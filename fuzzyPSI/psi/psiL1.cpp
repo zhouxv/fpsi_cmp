@@ -6,16 +6,17 @@ namespace CmpFuzzyPSI {
 Proto FuzzyPsiSender::runL1(span<block> inputs, Socket &chl) {
   Timer timer;
   u64 offlineComm = 0;
-  u64 onlineComm = 0;
+  [[maybe_unused]] u64 onlineComm = 0;
   u64 modL = ((mDelta * mDim + 1) % 2 == 0) ? (mDelta * mDim + 2)
                                             : (mDelta * mDim + 1);
   u64 modLLength = oc::log2ceil(modL) + 1;
   ModOps mod(modL);
-  long long offlineTime = 0;
-  long long onlineTime = 0;
+  [[maybe_unused]] long long offlineTime = 0;
+  [[maybe_unused]] long long onlineTime = 0;
   DEBUG_LOG("begin");
 
-  auto Begin = timer.setTimePoint("FuzzyPsiSender::set-up begin");
+  auto offlineBegin =
+      timer.setTimePoint("FuzzyPsiSender::offline begin");
   // famp setup
   FmapSender mFmapSender;
   mFmapSender.setTimer(timer);
@@ -82,28 +83,39 @@ Proto FuzzyPsiSender::runL1(span<block> inputs, Socket &chl) {
   IknpOtExtSender senderOutput;
   sync_wait(senderOutput.send(rotOutput, mPrng, chl));
   sync_wait(chl.flush());
-  auto End = timer.setTimePoint("FuzzyPsiSender::set-up end");
-
-  offlineTime +=
-      std::chrono::duration_cast<std::chrono::milliseconds>(End - Begin)
-          .count();
-  offlineComm = chl.bytesSent() + chl.bytesReceived() - onlineComm;
+  auto offlineEnd = timer.setTimePoint("FuzzyPsiSender::offline end");
+  offlineTime = std::chrono::duration_cast<std::chrono::milliseconds>(
+                    offlineEnd - offlineBegin)
+                    .count();
+  offlineComm = chl.bytesSent() + chl.bytesReceived();
   DEBUG_LOG("fmap setup done");
 
-  Begin = timer.setTimePoint("FuzzyPsiSender::run-fuzzy mapping begin");
+  auto onlineBegin = timer.setTimePoint("FuzzyPsiSender::online begin");
+
+  // auto fuzzyMappingBegin =
+  //     timer.setTimePoint("FuzzyPsiSender::fuzzy mapping begin");
+  // auto fuzzyMappingCommBegin = chl.bytesSent() + chl.bytesReceived();
+
   std::vector<block> Identifiers(mSenderSize * mFmapSender.myExpansionRate); // store the identifier for each input, length is mSenderSize*expansion rate
   std::vector<block> oringins(mSenderSize * mDim * mFmapSender.myExpansionRate); // store the original vector for each input, length is mSenderSize*dim*expansion rate
   macoro::sync_wait(mFmapSender.fuzzyMap(inputs, Identifiers, oringins, mPrng,
                                          chl, mNumThreads));
-  End = timer.setTimePoint("FuzzyPsiSender::fuzzy mapping end");
 
-  onlineTime +=
-      std::chrono::duration_cast<std::chrono::milliseconds>(End - Begin)
-          .count();
-  onlineComm = chl.bytesSent() + chl.bytesReceived() - offlineComm;
+  // auto fuzzyMappingEnd =
+  //     timer.setTimePoint("FuzzyPsiSender::fuzzy mapping end");
+  // auto fuzzyMappingTime =
+  //     std::chrono::duration_cast<std::chrono::milliseconds>(
+  //         fuzzyMappingEnd - fuzzyMappingBegin)
+  //         .count();
+  // auto fuzzyMappingComm = chl.bytesSent() + chl.bytesReceived() -
+  //                         fuzzyMappingCommBegin;
+
   DEBUG_LOG("fmap done");
 
-  Begin = timer.setTimePoint("FuzzyPsiSender::build cuckoo table begin");
+  // auto cuckooTableBuildBegin =
+  //     timer.setTimePoint("FuzzyPsiSender::cuckoo table build begin");
+  // auto cuckooTableBuildCommBegin = chl.bytesSent() + chl.bytesReceived();
+
 
   cuckoo.insert(Identifiers, cuckooSeed);
   std::vector<block> CuckooKeys(mSenderSize * mFmapSender.myExpansionRate); // store bin index
@@ -114,15 +126,21 @@ Proto FuzzyPsiSender::runL1(span<block> inputs, Socket &chl) {
           _mm_set_epi64x(i, ((u64 *)&Identifiers[b])[0]); // i||identifier
     }
   }
-  End = timer.setTimePoint("FuzzyPsiSender::build cuckoo table end");
 
-  onlineTime +=
-      std::chrono::duration_cast<std::chrono::milliseconds>(End - Begin)
-          .count();
-  onlineComm = chl.bytesSent() + chl.bytesReceived() - offlineComm;
+  // auto cuckooTableBuildEnd =
+  //     timer.setTimePoint("FuzzyPsiSender::cuckoo table build end");
+  // auto cuckooTableBuildTime =
+  //     std::chrono::duration_cast<std::chrono::milliseconds>(
+  //         cuckooTableBuildEnd - cuckooTableBuildBegin)
+  //         .count();
+  // auto cuckooTableBuildComm = chl.bytesSent() + chl.bytesReceived() -
+  //                             cuckooTableBuildCommBegin;
+
   DEBUG_LOG("cuckoo done");
 
-  Begin = timer.setTimePoint("FuzzyPsiSender::run-opprf begin");
+  // auto opprfBegin = timer.setTimePoint("FuzzyPsiSender::OPPRF begin");
+  // auto opprfCommBegin = chl.bytesSent() + chl.bytesReceived();
+
   u64 valsize = peqtLength - mDim - 1 + Cmp_len * mDim;
   u64 valsize_byte = (valsize + 7) / 8;
   std::vector<u8> Opprf_val_data(
@@ -185,28 +203,35 @@ Proto FuzzyPsiSender::runL1(span<block> inputs, Socket &chl) {
       // cmp_inputs_bin[i*mDim---(i+1)*mDim]
     }
   }
-  End = timer.setTimePoint("FuzzyPsiSender::run-opprf end");
 
-  onlineTime +=
-      std::chrono::duration_cast<std::chrono::milliseconds>(End - Begin)
-          .count();
-  onlineComm = chl.bytesSent() + chl.bytesReceived() - offlineComm;
+  // auto opprfEnd = timer.setTimePoint("FuzzyPsiSender::OPPRF end");
+  // auto opprfTime = std::chrono::duration_cast<std::chrono::milliseconds>(
+  //                      opprfEnd - opprfBegin)
+  //                      .count();
+  // auto opprfComm =
+  //     chl.bytesSent() + chl.bytesReceived() - opprfCommBegin;
+
   DEBUG_LOG("Opprf done.");
 
-  Begin = timer.setTimePoint("FuzzyPsiSender::run-mIMT begin");
+  // auto imtBegin = timer.setTimePoint("FuzzyPsiSender::mIMT begin");
+  // auto imtCommBegin = chl.bytesSent() + chl.bytesReceived();
+
   auto output = BitVector();
   macoro::sync_wait(
       mmIMTSender.run(cmp_inputs_bin, v_s, output, chl, mNumThreads));
-  End = timer.setTimePoint("FuzzyPsiSender::run-mIMT end");
 
-  onlineTime +=
-      std::chrono::duration_cast<std::chrono::milliseconds>(End - Begin)
-          .count();
-  onlineComm = chl.bytesSent() + chl.bytesReceived() - offlineComm;
+  // auto imtEnd = timer.setTimePoint("FuzzyPsiSender::mIMT end");
+  // auto imtTime = std::chrono::duration_cast<std::chrono::milliseconds>(
+  //                    imtEnd - imtBegin)
+  //                    .count();
+  // auto imtComm = chl.bytesSent() + chl.bytesReceived() - imtCommBegin;
+
   DEBUG_LOG("mIMT done.");
 
-  Begin =
-      timer.setTimePoint("FuzzyPsiSender::sencond OPPRF and OT exchange begin");
+  // auto secondOpprfAndOtBegin =
+  //     timer.setTimePoint("FuzzyPsiSender::second OPPRF and OT begin");
+  // auto secondOpprfAndOtCommBegin = chl.bytesSent() + chl.bytesReceived();
+
   auto e_prime_s = BitVector(TableSize * mDim);
   auto t_i_prime = BitVector(TableSize * mDim);
   auto t_i = BitVector(TableSize * mDim);
@@ -305,15 +330,20 @@ Proto FuzzyPsiSender::runL1(span<block> inputs, Socket &chl) {
   macoro::sync_wait(
       mmIMTSender2.run(distance_share, v_s_2_input, output2, chl, mNumThreads));
 
-  End = timer.setTimePoint("FuzzyPsiSender::sencond OPPRF and OT exchange end");
+  // auto secondOpprfAndOtEnd =
+  //     timer.setTimePoint("FuzzyPsiSender::second OPPRF and OT end");
+  // auto secondOpprfAndOtTime =
+  //     std::chrono::duration_cast<std::chrono::milliseconds>(
+  //         secondOpprfAndOtEnd - secondOpprfAndOtBegin)
+  //         .count();
+  // auto secondOpprfAndOtComm = chl.bytesSent() + chl.bytesReceived() -
+  //                             secondOpprfAndOtCommBegin;
 
-  onlineTime +=
-      std::chrono::duration_cast<std::chrono::milliseconds>(End - Begin)
-          .count();
-  onlineComm = chl.bytesSent() + chl.bytesReceived() - offlineComm;
   DEBUG_LOG("Second mIMT done.");
 
-  Begin = timer.setTimePoint("FuzzyPsiSender::run PEQT begin");
+  // auto peqtBegin = timer.setTimePoint("FuzzyPsiSender::PEQT begin");
+  // auto peqtCommBegin = chl.bytesSent() + chl.bytesReceived();
+
 
   auto peqtSend = BitVector(TableSize * peqtLength);
   auto peqtoutput = BitVector(TableSize);
@@ -331,16 +361,19 @@ Proto FuzzyPsiSender::runL1(span<block> inputs, Socket &chl) {
   }
   macoro::sync_wait(mPeqtSender.run(peqtSend, peqtoutput, chl));
 
-  End = timer.setTimePoint("FuzzyPsiSender::run PEQT end");
+  // auto peqtEnd = timer.setTimePoint("FuzzyPsiSender::PEQT end");
+  // auto peqtTime = std::chrono::duration_cast<std::chrono::milliseconds>(
+  //                     peqtEnd - peqtBegin)
+  //                     .count();
+  // auto peqtComm = chl.bytesSent() + chl.bytesReceived() - peqtCommBegin;
 
-  onlineTime +=
-      std::chrono::duration_cast<std::chrono::milliseconds>(End - Begin)
-          .count();
-  onlineComm = chl.bytesSent() + chl.bytesReceived() - offlineComm;
   DEBUG_LOG("PEQT done.");
 
   // output OT begin
-  Begin = timer.setTimePoint("FuzzyPsiSender:: Output OT begin");
+
+  // auto outputOtBegin = timer.setTimePoint("FuzzyPsiSender::output OT begin");
+  // auto outputOtCommBegin = chl.bytesSent() + chl.bytesReceived();
+
   auto chosbitsRecv = BitVector(TableSize * mDim);
   macoro::sync_wait(chl.recv(chosbitsRecv));
   std::vector<block> maskedData(2 * TableSize * mDim);
@@ -369,11 +402,17 @@ Proto FuzzyPsiSender::runL1(span<block> inputs, Socket &chl) {
   macoro::sync_wait(chl.send(std::move(maskedData)));
   macoro::sync_wait(chl.flush());
 
-  End = timer.setTimePoint("FuzzyPsiSender:: Output OT end");
+  // auto outputOtEnd = timer.setTimePoint("FuzzyPsiSender::output OT end");
+  // auto outputOtTime = std::chrono::duration_cast<std::chrono::milliseconds>(
+  //                         outputOtEnd - outputOtBegin)
+  //                         .count();
+  // auto outputOtComm =
+  //     chl.bytesSent() + chl.bytesReceived() - outputOtCommBegin;
 
-  onlineTime +=
-      std::chrono::duration_cast<std::chrono::milliseconds>(End - Begin)
-          .count();
+  auto onlineEnd = timer.setTimePoint("FuzzyPsiSender::online end");
+  onlineTime = std::chrono::duration_cast<std::chrono::milliseconds>(
+                   onlineEnd - onlineBegin)
+                   .count();
   onlineComm = chl.bytesSent() + chl.bytesReceived() - offlineComm;
 
   co_return;
@@ -392,7 +431,8 @@ Proto FuzzyPsiReceiver::runL1(span<block> inputs, Socket &chl) {
 
   DEBUG_LOG("begin");
 
-  auto Begin = timer.setTimePoint("FuzzyPsiReceiver::set-up begin");
+  auto offlineBegin =
+      timer.setTimePoint("FuzzyPsiReceiver::offline begin");
   // famp setup
   FmapReceiver mFmapReceiver;
   mFmapReceiver.setTimer(timer);
@@ -462,38 +502,55 @@ Proto FuzzyPsiReceiver::runL1(span<block> inputs, Socket &chl) {
   mPrng.get(sOutput.data(), sOutput.sizeBytes());
   sync_wait(recverOutput.receive(sOutput, rotOutput, mPrng, chl));
   sync_wait(chl.flush());
-  auto End = timer.setTimePoint("FuzzyPsiReceiver::set-up end");
-
-  offlineTime +=
-      std::chrono::duration_cast<std::chrono::milliseconds>(End - Begin)
-          .count();
-  offlineComm = chl.bytesSent() + chl.bytesReceived() - onlineComm;
+  auto offlineEnd = timer.setTimePoint("FuzzyPsiReceiver::offline end");
+  offlineTime = std::chrono::duration_cast<std::chrono::milliseconds>(
+                    offlineEnd - offlineBegin)
+                    .count();
+  offlineComm = chl.bytesSent() + chl.bytesReceived();
   DEBUG_LOG("fmap setup done");
 
-  Begin = timer.setTimePoint("FuzzyPsiReceiver::run-fuzzy mapping begin");
+  auto onlineBegin = timer.setTimePoint("FuzzyPsiReceiver::online begin");
+
+  // auto fuzzyMappingBegin =
+  //     timer.setTimePoint("FuzzyPsiReceiver::fuzzy mapping begin");
+  // auto fuzzyMappingCommBegin = chl.bytesSent() + chl.bytesReceived();
+
   std::vector<block> Identifiers(mRecverSize * mFmapReceiver.myExpansionRate); // store the identifier for each input, length is mRecverSize*expansion rate
   // std::vector<block> oringins(mRecverSize*mDim);
   macoro::sync_wait(
       mFmapReceiver.fuzzyMap(inputs, Identifiers, mPrng, chl, mNumThreads));
-  End = timer.setTimePoint("FuzzyPsiReceiver::fuzzy mapping end");
 
-  onlineTime +=
-      std::chrono::duration_cast<std::chrono::milliseconds>(End - Begin)
-          .count();
-  onlineComm = chl.bytesSent() + chl.bytesReceived() - offlineComm;
+  // auto fuzzyMappingEnd =
+  //     timer.setTimePoint("FuzzyPsiReceiver::fuzzy mapping end");
+  // auto fuzzyMappingTime =
+  //     std::chrono::duration_cast<std::chrono::milliseconds>(
+  //         fuzzyMappingEnd - fuzzyMappingBegin)
+  //         .count();
+  // auto fuzzyMappingComm = chl.bytesSent() + chl.bytesReceived() -
+  //                         fuzzyMappingCommBegin;
+
   DEBUG_LOG("fmap done");
 
-  Begin = timer.setTimePoint("FuzzyPsiSender::build simple table begin");
-  sIdx.insertItems(Identifiers, cuckooSeed);
-  End = timer.setTimePoint("FuzzyPsiSender::build simple table end");
+  // auto simpleTableBuildBegin =
+  //     timer.setTimePoint("FuzzyPsiReceiver::simple table build begin");
+  // auto simpleTableBuildCommBegin = chl.bytesSent() + chl.bytesReceived();
 
-  onlineTime +=
-      std::chrono::duration_cast<std::chrono::milliseconds>(End - Begin)
-          .count();
-  onlineComm = chl.bytesSent() + chl.bytesReceived() - offlineComm;
+  sIdx.insertItems(Identifiers, cuckooSeed);
+
+  // auto simpleTableBuildEnd =
+  //     timer.setTimePoint("FuzzyPsiReceiver::simple table build end");
+  // auto simpleTableBuildTime =
+  //     std::chrono::duration_cast<std::chrono::milliseconds>(
+  //         simpleTableBuildEnd - simpleTableBuildBegin)
+  //         .count();
+  // auto simpleTableBuildComm = chl.bytesSent() + chl.bytesReceived() -
+  //                             simpleTableBuildCommBegin;
+
   DEBUG_LOG("simple done");
 
-  Begin = timer.setTimePoint("FuzzyPsiReceiver::run-opprf begin");
+  // auto opprfBegin = timer.setTimePoint("FuzzyPsiReceiver::OPPRF begin");
+  // auto opprfCommBegin = chl.bytesSent() + chl.bytesReceived();
+
   u64 valsize = peqtLength - mDim - 1 + Cmp_len * mDim;
   u64 valsize_byte = (valsize + 7) / 8;
   std::vector<u8> Opprf_val_data(Identifiers.size() * valsize_byte * 3,
@@ -543,27 +600,34 @@ Proto FuzzyPsiReceiver::runL1(span<block> inputs, Socket &chl) {
   mOpprfSender.setTimer(timer);
   macoro::sync_wait(mOpprfSender.send(mSenderSize * mFmapReceiver.anotherExpansionRate, Opprf_key, Opprf_val, mPrng,
                                       mNumThreads, chl));
-  End = timer.setTimePoint("FuzzyPsiReceiver::run-opprf end");
 
-  onlineTime +=
-      std::chrono::duration_cast<std::chrono::milliseconds>(End - Begin)
-          .count();
-  onlineComm = chl.bytesSent() + chl.bytesReceived() - offlineComm;
+  // auto opprfEnd = timer.setTimePoint("FuzzyPsiReceiver::OPPRF end");
+  // auto opprfTime = std::chrono::duration_cast<std::chrono::milliseconds>(
+  //                      opprfEnd - opprfBegin)
+  //                      .count();
+  // auto opprfComm =
+  //     chl.bytesSent() + chl.bytesReceived() - opprfCommBegin;
+
   DEBUG_LOG("Opprf done.");
 
-  Begin = timer.setTimePoint("FuzzyPsiReceiver::run-mIMT begin");
+  // auto imtBegin = timer.setTimePoint("FuzzyPsiReceiver::mIMT begin");
+  // auto imtCommBegin = chl.bytesSent() + chl.bytesReceived();
+
   auto output = BitVector();
   macoro::sync_wait(mmIMTReceiver.run(output, chl, mNumThreads));
-  End = timer.setTimePoint("FuzzyPsiReceiver::run-mIMT end");
 
-  onlineTime +=
-      std::chrono::duration_cast<std::chrono::milliseconds>(End - Begin)
-          .count();
-  onlineComm = chl.bytesSent() + chl.bytesReceived() - offlineComm;
+  // auto imtEnd = timer.setTimePoint("FuzzyPsiReceiver::mIMT end");
+  // auto imtTime = std::chrono::duration_cast<std::chrono::milliseconds>(
+  //                    imtEnd - imtBegin)
+  //                    .count();
+  // auto imtComm = chl.bytesSent() + chl.bytesReceived() - imtCommBegin;
+
   DEBUG_LOG("mIMT done.");
 
-  Begin =
-      timer.setTimePoint("FuzzyPsiSender::sencond OPPRF and OT exchange begin");
+  // auto secondOpprfAndOtBegin =
+  //     timer.setTimePoint("FuzzyPsiReceiver::second OPPRF and OT begin");
+  // auto secondOpprfAndOtCommBegin = chl.bytesSent() + chl.bytesReceived();
+
   auto e_prime_r = BitVector(TableSize * mDim);
   auto t_i_prime = BitVector(TableSize * mDim);
   auto t_i = BitVector(TableSize * mDim);
@@ -655,16 +719,21 @@ Proto FuzzyPsiReceiver::runL1(span<block> inputs, Socket &chl) {
   sync_wait(chl.send(std::move(v_s_2)));
   auto output2 = BitVector();
   macoro::sync_wait(mmIMTReceiver2.run(output2, chl, mNumThreads));
-  End = timer.setTimePoint("FuzzyPsiSender::sencond OPPRF and OT exchange end");
 
-  onlineTime +=
-      std::chrono::duration_cast<std::chrono::milliseconds>(End - Begin)
-          .count();
-  onlineComm = chl.bytesSent() + chl.bytesReceived() - offlineComm;
+  // auto secondOpprfAndOtEnd =
+  //     timer.setTimePoint("FuzzyPsiReceiver::second OPPRF and OT end");
+  // auto secondOpprfAndOtTime =
+  //     std::chrono::duration_cast<std::chrono::milliseconds>(
+  //         secondOpprfAndOtEnd - secondOpprfAndOtBegin)
+  //         .count();
+  // auto secondOpprfAndOtComm = chl.bytesSent() + chl.bytesReceived() -
+  //                             secondOpprfAndOtCommBegin;
+
   DEBUG_LOG("Second mIMT done.");
 
+  // auto peqtBegin = timer.setTimePoint("FuzzyPsiReceiver::PEQT begin");
+  // auto peqtCommBegin = chl.bytesSent() + chl.bytesReceived();
 
-  Begin = timer.setTimePoint("FuzzyPsiSender::run PEQT begin");
   auto peqtSend = BitVector(TableSize * peqtLength);
   auto peqtoutput = BitVector(TableSize);
   for (u64 i = 0; i < TableSize; i++) {
@@ -681,15 +750,20 @@ Proto FuzzyPsiReceiver::runL1(span<block> inputs, Socket &chl) {
   }
   macoro::sync_wait(mPeqtReceiver.run(peqtSend, peqtoutput, chl));
 
-  End = timer.setTimePoint("FuzzyPsiSender::run PEQT end");
-  onlineTime +=
-      std::chrono::duration_cast<std::chrono::milliseconds>(End - Begin)
-          .count();
-  onlineComm = chl.bytesSent() + chl.bytesReceived() - offlineComm;
+  // auto peqtEnd = timer.setTimePoint("FuzzyPsiReceiver::PEQT end");
+  // auto peqtTime = std::chrono::duration_cast<std::chrono::milliseconds>(
+  //                     peqtEnd - peqtBegin)
+  //                     .count();
+  // auto peqtComm = chl.bytesSent() + chl.bytesReceived() - peqtCommBegin;
+
   DEBUG_LOG("PEQT done.");
 
   // output OT begin
-  Begin = timer.setTimePoint("FuzzyPsiSender:: Output OT begin");
+
+  // auto outputOtBegin =
+  //     timer.setTimePoint("FuzzyPsiReceiver::output OT begin");
+  // auto outputOtCommBegin = chl.bytesSent() + chl.bytesReceived();
+
   auto chosbitsSend = BitVector(TableSize * mDim);
   for (u64 i = 0; i < TableSize; i++) {
     for (u64 j = 0; j < mDim; j++) {
@@ -714,10 +788,18 @@ Proto FuzzyPsiReceiver::runL1(span<block> inputs, Socket &chl) {
       outputPSI.insert(outputPSI.end(), outputRecv.begin(), outputRecv.end());
   }
 
-  End = timer.setTimePoint("FuzzyPsiSender:: Output OT end");
-  onlineTime +=
-      std::chrono::duration_cast<std::chrono::milliseconds>(End - Begin)
-          .count();
+  // auto outputOtEnd =
+  //     timer.setTimePoint("FuzzyPsiReceiver::output OT end");
+  // auto outputOtTime = std::chrono::duration_cast<std::chrono::milliseconds>(
+  //                         outputOtEnd - outputOtBegin)
+  //                         .count();
+  // auto outputOtComm =
+  //     chl.bytesSent() + chl.bytesReceived() - outputOtCommBegin;
+
+  auto onlineEnd = timer.setTimePoint("FuzzyPsiReceiver::online end");
+  onlineTime = std::chrono::duration_cast<std::chrono::milliseconds>(
+                   onlineEnd - onlineBegin)
+                   .count();
   onlineComm = chl.bytesSent() + chl.bytesReceived() - offlineComm;
 
   online_time = onlineTime;

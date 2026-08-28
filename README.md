@@ -109,4 +109,12 @@ This section describes the usage of the executables located at `./build/fpsi`.
 | **ip** | Server IP | IP address string, default: `"localhost"` | IP address for network communication |
 | **port** | Server Port | Port number, default: `1212` | Port number for connections |
 | **trait** | Number of Trials | Positive integer, default: `5` | Number of test runs for averaging results |
+| **out** | CSV Output | File path | Append the averaged online/offline time and communication result to a CSV file |
 | **h/help** | Help Message | Flag (no value) | Print help message and usage |
+
+The benchmark script creates a timestamped `fpsi_cmp_results_*.csv` file in
+the project root. To run a minimal experiment matrix, for example:
+
+```bash
+./shell_run_bench_fpsi.sh -metric 0 1 2 -nn 8 -dim 2 -delta 10 -trait 1
+```
