@@ -53,35 +53,69 @@ capability inside Docker.
 
 ## 3. Installation
 
-Run the following commands from the repository root.
-
-### Docker
-
+### Build Docker Image
 Build the image and open a shell inside it:
 
 ```bash
-docker build -t fpsi_cmp:latest .
-docker run --rm -it --cap-add=NET_ADMIN fpsi_cmp:latest bash
-```
+docker build -t fpsi_cmp_artifact:latest .
+docker run -d --cap-add=NET_ADMIN \
+  --name fpsi_cmp_ours \
+  fpsi_cmp_artifact:latest \
+  sleep infinity
 
-Run the experiment commands in Section 4 from that container shell.
-To keep CSV files after the container exits, mount a host output directory:
+```
+### Prebuilt Docker images
+
+Using the prebuilt Docker images is the recommended way to reproduce the
+experiments. The source repositories and corresponding Docker images are:
+
+| Implementation | Source repository | Docker image |
+|---|---|---|
+| Ours | `https://github.com/zhouxv/fpsi_cmp` | `blueobsidian/fpsi_cmp_artifact:latest` |
+| [11] so-OPPRF-based fuzzy PSI | `https://github.com/zhouxv/fpsi_ssoprf/tree/fpsi-cmp_artifact_20260919` | `blueobsidian/fpsi_cmp_artifact_exp11:latest` |
+| [12] da-ROT-based fuzzy PSI | `https://github.com/zhouxv/fpsi_daOT/tree/fpsi-cmp_artifact_20260916` | `blueobsidian/fpsi_cmp_artifact_exp12:latest` |
+
+Pull the three images:
 
 ```bash
-mkdir -p results
-docker run --rm -it --cap-add=NET_ADMIN \
-  -v "$PWD/results:/results" fpsi_cmp:latest bash
+docker pull blueobsidian/fpsi_cmp_artifact:latest
+docker pull blueobsidian/fpsi_cmp_artifact_exp11:latest
+docker pull blueobsidian/fpsi_cmp_artifact_exp12:latest
 ```
 
-Then pass `--output-dir /results` to the benchmark script.
-
-The project also provides a Docker Hub image:
+Start the three containers:
 
 ```bash
-docker pull blueobsidian/fpsi_cmp:latest
+docker run -d --cap-add=NET_ADMIN \
+  --name fpsi_cmp_ours \
+  blueobsidian/fpsi_cmp_artifact:latest \
+  sleep infinity
+
+docker run -d --cap-add=NET_ADMIN \
+  --name fpsi_cmp_exp11 \
+  blueobsidian/fpsi_cmp_artifact_exp11:latest \
+  sleep infinity
+
+docker run -d --cap-add=NET_ADMIN \
+  --name fpsi_cmp_exp12 \
+  blueobsidian/fpsi_cmp_artifact_exp12:latest \
+  sleep infinity
 ```
 
-### Local
+The containers are kept running so that the experiments in Section 4 can be
+executed interactively with `docker exec`. The `NET_ADMIN` capability is
+required to configure the LAN and WAN network profiles.
+
+To enter the container for our implementation:
+
+```bash
+docker exec -it fpsi_cmp_ours bash
+```
+
+The comparison containers are used in the comparison reproduction subsection
+of Section 4.
+
+### Standalone Build
 
 Install the project dependencies and compile:
 
@@ -179,7 +213,6 @@ To collect WAN results, select `wan` and run either preset:
 ./shell_run_bench_fpsi.sh --preset quick
 ```
 
-
 ### Custom parameters and help
 
 Explicit options override preset defaults regardless of argument order.
@@ -193,6 +226,121 @@ For example:
 
 `--dry-run` prints the commands without executing the protocols.
 Use `--output-dir DIR` to choose where results are saved.
+
+### Reproducing comparison experiments
+
+The comparison implementations and their Docker images are listed in
+Section 3. The following commands reproduce the experiments used for
+comparison with [11] and [12].
+
+The same network profile should be used for our implementation and the
+comparison implementation when comparing their results. The commands below
+use the LAN profile corresponding to the main experimental setting.
+
+#### Comparison with [11]
+
+Enter the container for the so-OPPRF-based fuzzy PSI implementation:
+
+```bash
+docker exec -it fpsi_cmp_exp11 bash
+```
+
+Inside the container, configure the LAN network profile:
+
+```bash
+cd /workspace
+./shell_config_network.sh lan
+```
+
+For a quick reproduction, run:
+
+```bash
+./shell_bench_fpsi_prefix.sh quick
+```
+
+The quick mode evaluates:
+
+```text
+metric = Linf, L1, L2
+N      = 2^12
+d      = 2, 6, 10
+delta  = 10, 250
+trials = 1
+```
+
+It contains 18 parameter combinations.
+
+For the complete reproduction, run:
+
+```bash
+./shell_bench_fpsi_prefix.sh full
+```
+
+The full mode evaluates:
+
+```text
+metric = Linf, L1, L2
+N      = 2^8, 2^12, 2^16
+d      = 2, 6, 10
+delta  = 10, 60, 250
+trials = 3
+```
+
+It contains 81 parameter combinations.
+
+#### Comparison with [12]
+
+Enter the container for the da-ROT-based fuzzy PSI implementation:
+
+```bash
+docker exec -it fpsi_cmp_exp12 bash
+```
+
+Inside the container, configure the LAN network profile:
+
+```bash
+cd /home
+./shell_config_network.sh lan
+```
+
+For a quick reproduction, run:
+
+```bash
+./shell_run_main.sh quick
+```
+
+For Linf and L1, the quick mode evaluates:
+
+```text
+N      = 2^12
+d      = 2, 6, 10
+delta  = 10, 250
+trials = 1
+```
+
+For L2, the implementation of [12] supports only `d = 2`. Therefore, the
+quick mode contains 14 parameter combinations in total.
+
+For the complete reproduction, run:
+
+```bash
+./shell_run_main.sh full
+```
+
+For Linf and L1, the full mode evaluates:
+
+```text
+N      = 2^8, 2^12, 2^16
+d      = 2, 6, 10
+delta  = 10, 60, 250
+trials = 3
+```
+
+For L2, only `d = 2` is evaluated. The full mode therefore contains 63
+parameter combinations in total.
+
+When reproducing cross-protocol comparisons, compare results only under the
+same metric, set size, dimension, threshold, and network profile.
 
 ## 5. Results and Paper Claims
 
