@@ -19,7 +19,7 @@ void printUsage(const char *prog) {
             << "    -dim <N>        : Dimension of the points, default: 6\n"
             << "    -delta <N>      : Distance threshold δ for fuzzy matching, "
                "default: 60\n"
-            << "    -ip <addr>      : Server IP address, default: localhost\n"
+            << "    -ip <addr>      : Server IP address, default: 127.0.0.1\n"
             << "    -port <N>       : Server port number, default: 1212\n"
             << "    -trait <N>      : Number of trials for averaging results, "
                "default: 5\n"
@@ -44,7 +44,7 @@ int main(int argc, char **argv) {
   const u64 dim = cmd.getOr<u64>("dim", 6);
   const u64 delta = cmd.getOr<u64>("delta", 60);
   const u64 trait = cmd.getOr<u64>("trait", 5);
-  const std::string ip = cmd.getOr<std::string>("ip", "localhost");
+  const std::string ip = cmd.getOr<std::string>("ip", "127.0.0.1");
   const u64 port = cmd.getOr<u64>("port", 1213);
   std::string addr = ip + ":" + std::to_string(port);
 
@@ -95,12 +95,10 @@ int main(int argc, char **argv) {
     auto begin0 = timer.setTimePoint("begin");
 
     auto send_setup = [&]() {
-      macoro::sync_wait(
-          sender.setUp(n, n, dim, delta, send_prng, send_chl, 1));
+      macoro::sync_wait(sender.setUp(n, n, dim, delta, send_prng, send_chl, 1));
     };
     auto recv_setup = [&]() {
-      macoro::sync_wait(
-          recver.setUp(n, n, dim, delta, recv_prng, recv_chl, 1));
+      macoro::sync_wait(recver.setUp(n, n, dim, delta, recv_prng, recv_chl, 1));
     };
     std::thread send_setup_th(send_setup);
     std::thread recv_setup_th(recv_setup);

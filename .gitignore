@@ -8,6 +8,7 @@
 build
 install
 thirdparty/*
+fpsi_cmp_results_*.csv
 
 test/*
 !test/*.cpp

@@ -28,7 +28,7 @@ void printUsage(const char *prog) {
          "default: 60\n"
       << "    -metric <N>     : Distance metric (0: L∞, 1: L₁, 2: L₂), "
          "default: 0\n"
-      << "    -ip <addr>      : Server IP address, default: localhost\n"
+      << "    -ip <addr>      : Server IP address, default: 127.0.0.1\n"
       << "    -port <N>       : Server port number, default: 1212\n"
       << "    -trait <N>      : Number of trials for averaging results, "
          "default: 5\n"
@@ -42,9 +42,7 @@ void printUsage(const char *prog) {
 int main(int argc, char **argv) {
   CLP cmd;
   cmd.parse(argc, argv);
-
-  // print help message
-  if (cmd.isSet("h") || cmd.isSet("help")) {
+  if (cmd.isSet("h") || cmd.isSet("help") || cmd.isSet("-help")) {
     printUsage(argv[0]);
     return 0;
   }
@@ -59,7 +57,7 @@ int main(int argc, char **argv) {
   const u64 delta = cmd.getOr<u64>("delta", 60);
   const u64 metric = cmd.getOr<u64>("metric", 0);
   const u64 numThreads = cmd.getOr<u64>("t", 1);
-  const std::string ip = cmd.getOr<std::string>("ip", "localhost");
+  const std::string ip = cmd.getOr<std::string>("ip", "127.0.0.1");
   const u64 port = cmd.getOr<u64>("port", 1212);
   const u64 trait = cmd.getOr<u64>("trait", 5);
   const std::string offlineCache = cmd.getOr<std::string>("offlineCache", "");
@@ -190,14 +188,15 @@ int main(int argc, char **argv) {
     }
     if (writeHeader) {
       output << "Protocol,Metric,Dim,Delta,Size,Online_Com.(MB),Online(s),"
-                "Offline_Com.(MB),Offline(s)\n";
+                "Offline_Com.(MB),Offline(s),Total_Com.(MB),Total(s)\n";
     }
 
     const string csv_metric = (metric == 0) ? "Linf" : "L" + metric_str;
-    output << "fpsi_cmp," << csv_metric << ',' << dim << ',' << delta << ','
-           << n << ',' << std::fixed << std::setprecision(3) << avg_online_com
-           << ',' << avg_online_time << ',' << avg_offline_com << ','
-           << avg_offline_time << ',' << total_com << ',' << total_time << '\n';
+    output << "fpsi_cmp," << csv_metric << ',' << dim << ','
+           << delta << ',' << n << ',' << std::fixed << std::setprecision(3)
+           << avg_online_com << ',' << avg_online_time << ',' << avg_offline_com
+           << ',' << avg_offline_time << ',' << total_com << ',' << total_time
+           << '\n';
   }
 
   return 0;

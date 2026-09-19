@@ -8,17 +8,20 @@ ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
     build-essential \
+    ca-certificates \
     cmake \
     autoconf \
     automake \
     libgmp-dev \
     libspdlog-dev \
-    libtool \   
+    libtool \
     libssl-dev \
     libmpfr-dev \
+    libfmt-dev \
     nasm \
     python3 \
     python3-pip \
+    python3-venv \
     vim \
     git \
     iproute2 \
@@ -27,17 +30,13 @@ RUN apt-get update && \
     jq && \
     rm -rf /var/lib/apt/lists/*
 
-# Install tcconfig for network interface configuration
-RUN curl -fsSL \
-    https://raw.githubusercontent.com/thombashi/tcconfig/master/scripts/installer.sh \
-    | bash
-
-# Install thirdparty dependencies
+# Install third-party dependencies at the revisions pinned by the script.
 COPY --chmod=755 shell_install_dependencies.sh /workspace
 
-RUN chmod +x shell_install_dependencies.sh && \
-    ./shell_install_dependencies.sh && \
+RUN ./shell_install_dependencies.sh && \
     rm -rf /workspace/thirdparty
+
+ENV PATH="/workspace/install/tcconfig/bin:${PATH}"
 
 # Copy source code and build files
 COPY shell_build_cmd.sh \
@@ -51,7 +50,8 @@ RUN chmod +x shell_build_cmd.sh && \
 
 # Copy runtime and benchmark files
 COPY README.md \
+    shell_config_network.sh \
     shell_run_bench_fpsi.sh \
     /workspace/
 
-RUN chmod +x shell_run_bench_fpsi.sh
+RUN chmod +x shell_config_network.sh shell_run_bench_fpsi.sh
