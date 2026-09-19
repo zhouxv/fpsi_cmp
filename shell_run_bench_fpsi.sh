@@ -8,7 +8,7 @@ metrics=(0 1 2)
 ns=(8 12 16)
 dims=(2 6 10 15)
 deltas=(10 60 250)
-num_trials=5
+num_trials=3
 
 print_help() {
   cat <<EOF
@@ -43,7 +43,7 @@ fi
 
 output_file="${SCRIPT_DIR}/fpsi_cmp_results_$(date +%Y%m%d_%H%M%S).csv"
 
-printf "[Size] [Metric] [Dim] [Delta] [Online_Com.(MB)] [Online(s)] [Offline_Com.(MB)] [Offline(s)]\n"
+printf "[Size] [Metric] [Dim] [Delta] [Online_Com.(MB)] [Online(s)] [Offline_Com.(MB)] [Offline(s)] [Total_Com.(MB)] [Total(s)]\n"
 
 run_case() {
   local metric="$1" nn="$2" dim="$3" delta="$4"

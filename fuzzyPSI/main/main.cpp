@@ -17,25 +17,26 @@ using namespace volePSI;
 using namespace oc;
 
 void printUsage(const char *prog) {
-  std::cout << "Usage: " << prog << " [options]\n"
-            << "  Options:\n"
-            << "    -n <N>          : Set size (direct), default: 4096\n"
-            << "    -nn <N>         : Set size (logarithm), input size = 2^nn "
-               "(overrides -n), default: 12\n"
-            << "    -dim <N>        : Dimension of the points, default: 6\n"
-            << "    -delta <N>      : Distance threshold δ for fuzzy matching, "
-               "default: 60\n"
-            << "    -metric <N>     : Distance metric (0: L∞, 1: L₁, 2: L₂), "
-               "default: 0\n"
-            << "    -ip <addr>      : Server IP address, default: localhost\n"
-            << "    -port <N>       : Server port number, default: 1212\n"
-            << "    -trait <N>      : Number of trials for averaging results, "
-               "default: 5\n"
-            << "    -out <file>     : Append the averaged result to a CSV file\n"
-            << "    -offlineCache <dir> : One-time L2 offline-material cache\n"
-            << "    -offlineOnly    : Generate L2 cache then exit (requires "
-               "-offlineCache)\n"
-            << "    -h/--help       : Print this help message\n";
+  std::cout
+      << "Usage: " << prog << " [options]\n"
+      << "  Options:\n"
+      << "    -n <N>          : Set size (direct), default: 4096\n"
+      << "    -nn <N>         : Set size (logarithm), input size = 2^nn "
+         "(overrides -n), default: 12\n"
+      << "    -dim <N>        : Dimension of the points, default: 6\n"
+      << "    -delta <N>      : Distance threshold δ for fuzzy matching, "
+         "default: 60\n"
+      << "    -metric <N>     : Distance metric (0: L∞, 1: L₁, 2: L₂), "
+         "default: 0\n"
+      << "    -ip <addr>      : Server IP address, default: localhost\n"
+      << "    -port <N>       : Server port number, default: 1212\n"
+      << "    -trait <N>      : Number of trials for averaging results, "
+         "default: 5\n"
+      << "    -out <file>     : Append the averaged result to a CSV file\n"
+      << "    -offlineCache <dir> : One-time L2 offline-material cache\n"
+      << "    -offlineOnly    : Generate L2 cache then exit (requires "
+         "-offlineCache)\n"
+      << "    -h/--help       : Print this help message\n";
 }
 
 int main(int argc, char **argv) {
@@ -166,13 +167,18 @@ int main(int argc, char **argv) {
   double avg_offline_com =
       accumulate(offline_commus.begin(), offline_commus.end(), 0.0) / trait;
 
+  double total_time = avg_online_time + avg_offline_time;
+  double total_com = avg_online_com + avg_offline_com;
+
   string metric_str = (metric == 0) ? "inf" : std::to_string(metric);
 
-  cout << std::format("{:^5}  𝐿{}  {:^5}  {:^5}  "
-                      "{:^10.3f}  {:^10.3f}  {:^10.3f}  {:^10.3f}",
-                      n, metric_str, dim, delta, avg_online_com,
-                      avg_online_time, avg_offline_com, avg_offline_time)
-       << endl;
+  cout
+      << std::format(
+             "{:^5}  𝐿{}  {:^5}  {:^5}  "
+             "{:^10.3f}  {:^10.3f}  {:^10.3f}  {:^10.3f}  {:^10.3f}  {:^10.3f}",
+             n, metric_str, dim, delta, avg_online_com, avg_online_time,
+             avg_offline_com, avg_offline_time, total_com, total_time)
+      << endl;
 
   if (cmd.isSet("out")) {
     const auto outputPath = cmd.get<std::string>("out");
@@ -191,7 +197,7 @@ int main(int argc, char **argv) {
     output << "fpsi_cmp," << csv_metric << ',' << dim << ',' << delta << ','
            << n << ',' << std::fixed << std::setprecision(3) << avg_online_com
            << ',' << avg_online_time << ',' << avg_offline_com << ','
-           << avg_offline_time << '\n';
+           << avg_offline_time << ',' << total_com << ',' << total_time << '\n';
   }
 
   return 0;
