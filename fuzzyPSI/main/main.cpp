@@ -174,8 +174,8 @@ int main(int argc, char **argv) {
       << std::format(
              "{:^5}  𝐿{}  {:^5}  {:^5}  "
              "{:^10.3f}  {:^10.3f}  {:^10.3f}  {:^10.3f}  {:^10.3f}  {:^10.3f}",
-             n, metric_str, dim, delta, avg_online_com, avg_online_time,
-             avg_offline_com, avg_offline_time, total_com, total_time)
+             n, metric_str, dim, delta, avg_offline_com, avg_offline_time,
+             avg_online_com, avg_online_time, total_com, total_time)
       << endl;
 
   if (cmd.isSet("out")) {
@@ -187,16 +187,16 @@ int main(int argc, char **argv) {
       throw std::runtime_error("failed to open result file: " + outputPath);
     }
     if (writeHeader) {
-      output << "Protocol,Metric,Dim,Delta,Size,Online_Com.(MB),Online(s),"
-                "Offline_Com.(MB),Offline(s),Total_Com.(MB),Total(s)\n";
+      output << "Protocol,Metric,Dim,Delta,Size,"
+                "Offline_Com.(MB),Offline(s),Online_Com.(MB),Online(s),Total_"
+                "Com.(MB),Total(s)\n";
     }
 
     const string csv_metric = (metric == 0) ? "Linf" : "L" + metric_str;
-    output << "fpsi_cmp," << csv_metric << ',' << dim << ','
-           << delta << ',' << n << ',' << std::fixed << std::setprecision(3)
-           << avg_online_com << ',' << avg_online_time << ',' << avg_offline_com
-           << ',' << avg_offline_time << ',' << total_com << ',' << total_time
-           << '\n';
+    output << "fpsi_cmp," << csv_metric << ',' << dim << ',' << delta << ','
+           << n << ',' << std::fixed << std::setprecision(3) << avg_offline_com
+           << ',' << avg_offline_time << ',' << avg_online_com << ','
+           << avg_online_time << ',' << total_com << ',' << total_time << '\n';
   }
 
   return 0;

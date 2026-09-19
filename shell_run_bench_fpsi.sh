@@ -197,8 +197,8 @@ if [[ "${dry_run}" == false ]]; then
     exit 1
   fi
   mkdir -p "${output_dir}"
-  printf '\n[Size] [Metric] [Dim] [Delta] [Online_Com.(MB)] [Online(s)] '
-  printf '[Offline_Com.(MB)] [Offline(s)] [Total_Com.(MB)] [Total(s)]\n'
+  printf '\n[Size] [Metric] [Dim] [Delta] [Offline_Com.(MB)] [Offline(s)] '
+  printf '[Online_Com.(MB)] [Online(s)] [Total_Com.(MB)] [Total(s)]\n'
 fi
 
 # 4. Run each metric, set size, dimension, and threshold combination in order.
