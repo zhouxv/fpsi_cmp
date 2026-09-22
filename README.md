@@ -62,7 +62,6 @@ docker run -d --cap-add=NET_ADMIN \
   --name fpsi_cmp_ours \
   fpsi_cmp_artifact:latest \
   sleep infinity
-
 ```
 ### Prebuilt Docker images
 
@@ -184,7 +183,8 @@ persist until changed, cleared, or the container is removed.
 ./shell_run_bench_fpsi.sh --preset quick
 ```
 
-Quick selects 18 combinations and runs one trial per combination.
+Quick is the default: `./shell_run_bench_fpsi.sh` is equivalent to the command
+above. It selects 18 combinations and runs one trial per combination.
 It uses the moderate set size emphasized in Section 8.2 and retains every
 metric and dimension, with the two threshold endpoints.
 
@@ -195,7 +195,7 @@ metric and dimension, with the two threshold endpoints.
 ./shell_run_bench_fpsi.sh --preset full
 ```
 
-Full is the default when no preset is specified. It runs all 81 combinations
+Quick is the default when no preset is specified. Full runs all 81 combinations
 and averages three trials per combination.
 
 | Parameter | Quick | Full |
@@ -231,7 +231,10 @@ Use `--output-dir DIR` to choose where results are saved.
 
 The comparison implementations and their Docker images are listed in
 Section 3. The following commands reproduce the experiments used for
-comparison with [11] and [12].
+comparison with [11] and [12]. All three projects use
+`./shell_run_bench_fpsi.sh --preset quick|full`, with quick as the default.
+The options `--metric`, `--nn`, `--dim`, `--delta`, `--trials`, `--interface`,
+`--output-dir`, and `--dry-run` are shared.
 
 The same network profile should be used for our implementation and the
 comparison implementation when comparing their results. The commands below
@@ -255,7 +258,7 @@ cd /workspace
 For a quick reproduction, run:
 
 ```bash
-./shell_bench_fpsi_prefix.sh quick
+./shell_run_bench_fpsi.sh --preset quick
 ```
 
 The quick mode evaluates:
@@ -273,7 +276,7 @@ It contains 18 parameter combinations.
 For the complete reproduction, run:
 
 ```bash
-./shell_bench_fpsi_prefix.sh full
+./shell_run_bench_fpsi.sh --preset full
 ```
 
 The full mode evaluates:
@@ -299,14 +302,14 @@ docker exec -it fpsi_cmp_exp12 bash
 Inside the container, configure the LAN network profile:
 
 ```bash
-cd /home
+cd /workspace
 ./shell_config_network.sh lan
 ```
 
 For a quick reproduction, run:
 
 ```bash
-./shell_run_main.sh quick
+./shell_run_bench_fpsi.sh --preset quick
 ```
 
 For Linf and L1, the quick mode evaluates:
@@ -324,7 +327,7 @@ quick mode contains 14 parameter combinations in total.
 For the complete reproduction, run:
 
 ```bash
-./shell_run_main.sh full
+./shell_run_bench_fpsi.sh --preset full
 ```
 
 For Linf and L1, the full mode evaluates:
@@ -338,6 +341,11 @@ trials = 3
 
 For L2, only `d = 2` is evaluated. The full mode therefore contains 63
 parameter combinations in total.
+
+The comparison scripts write `fpsi_ssoprf_results_<network>_<timestamp>.csv`
+and `fpsi_daot_results_<network>_<timestamp>.csv`, respectively, using the same
+11 CSV columns as Ours (offline, online, then total measurements). daOT skips
+L2 dimensions other than 2; those combinations have no CSV rows.
 
 When reproducing cross-protocol comparisons, compare results only under the
 same metric, set size, dimension, threshold, and network profile.
@@ -396,7 +404,7 @@ Quick omits the middle threshold and other set sizes to reduce evaluation
 work. It illustrates representative results but does not cover every reported
 speedup extremum or establish an asymptotic bound. Full covers the complete
 parameter matrix for Ours. Independent cross-protocol speedup validation also
-requires matching baseline runs; baseline integration remains pending.
+requires matching baseline runs as described in Section 4.
 
 ## 6. Executable Usage
 

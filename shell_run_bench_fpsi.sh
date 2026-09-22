@@ -16,7 +16,7 @@ num_trials=""
 interface="lo"
 output_dir="${SCRIPT_DIR}"
 dry_run=false
-preset="full"
+preset="quick"
 
 print_help() {
   cat <<'EOF'
@@ -27,8 +27,8 @@ The network is configured separately with shell_config_network.sh. This script
 detects the current tcconfig settings and prints them before the benchmark.
 
 Presets:
-  full   Complete paper matrix, 81 cases and 3 trials per case (default)
-  quick  Representative Table 2 subset, 18 cases and 1 trial per case
+  full   Complete paper matrix, 81 cases and 3 trials per case
+  quick  Representative Table 2 subset, 18 cases and 1 trial per case (default)
 
 Full matrix:
   metric = 0 1 2          (0=Linf, 1=L1, 2=L2)
@@ -45,7 +45,7 @@ Quick matrix:
   trials = 1
 
 Options:
-  --preset NAME                  full or quick (default: full)
+  --preset NAME                  full or quick (default: quick)
   --metric, -metric VALUES...   Metrics to run (0, 1, 2)
   --nn, -nn VALUES...           Base-2 set-size exponents
   --dim, -dim VALUES...         Dimensions
