@@ -86,10 +86,10 @@ capability inside Docker.
 Build the image and open a shell inside it:
 
 ```bash
-docker build -t fpsi_cmp_artifact:latest .
+docker build -t blueobsidian/fpsi_cmp_artifact:our .
 docker run -d --cap-add=NET_ADMIN \
   --name fpsi_cmp_ours \
-  fpsi_cmp_artifact:latest \
+  blueobsidian/fpsi_cmp_artifact:our \
   sleep infinity
 ```
 
@@ -113,16 +113,16 @@ experiments. The source repositories and corresponding Docker images are:
 
 | Implementation | Source repository | Docker image |
 |---|---|---|
-| Ours | `https://github.com/zhouxv/fpsi_cmp` | `blueobsidian/fpsi_cmp_artifact:latest` |
-| Exp11: so-OPPRF-based fuzzy PSI [\[1\]](#ref-1) | `https://github.com/zhouxv/fpsi_ssoprf/tree/fpsi-cmp_artifact_20260919` | `blueobsidian/fpsi_cmp_artifact_exp11:latest` |
-| Exp12: da-ROT-based fuzzy PSI [\[2\]](#ref-2) | `https://github.com/zhouxv/fpsi_daOT/tree/fpsi-cmp_artifact_20260916` | `blueobsidian/fpsi_cmp_artifact_exp12:latest` |
+| Ours | `https://github.com/zhouxv/fpsi_cmp` | `blueobsidian/fpsi_cmp_artifact:our` |
+| Exp11: so-OPPRF-based fuzzy PSI [\[1\]](#ref-1) | `https://github.com/zhouxv/fpsi_ssoprf/tree/fpsi-cmp_artifact_20260919` | `blueobsidian/fpsi_cmp_artifact:exp11_ssoprf` |
+| Exp12: da-ROT-based fuzzy PSI [\[2\]](#ref-2) | `https://github.com/zhouxv/fpsi_daOT/tree/fpsi-cmp_artifact_20260916` | `blueobsidian/fpsi_cmp_artifact:exp12_daot` |
 
 Pull the three images:
 
 ```bash
-docker pull blueobsidian/fpsi_cmp_artifact:latest
-docker pull blueobsidian/fpsi_cmp_artifact_exp11:latest
-docker pull blueobsidian/fpsi_cmp_artifact_exp12:latest
+docker pull blueobsidian/fpsi_cmp_artifact:our
+docker pull blueobsidian/fpsi_cmp_artifact:exp11_ssoprf
+docker pull blueobsidian/fpsi_cmp_artifact:exp12_daot
 ```
 
 Start the three containers:
@@ -130,17 +130,17 @@ Start the three containers:
 ```bash
 docker run -d --cap-add=NET_ADMIN \
   --name fpsi_cmp_ours \
-  blueobsidian/fpsi_cmp_artifact:latest \
+  blueobsidian/fpsi_cmp_artifact:our \
   sleep infinity
 
 docker run -d --cap-add=NET_ADMIN \
   --name fpsi_cmp_exp11 \
-  blueobsidian/fpsi_cmp_artifact_exp11:latest \
+  blueobsidian/fpsi_cmp_artifact:exp11_ssoprf \
   sleep infinity
 
 docker run -d --cap-add=NET_ADMIN \
   --name fpsi_cmp_exp12 \
-  blueobsidian/fpsi_cmp_artifact_exp12:latest \
+  blueobsidian/fpsi_cmp_artifact:exp12_daot \
   sleep infinity
 ```
 
