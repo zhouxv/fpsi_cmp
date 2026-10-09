@@ -46,10 +46,23 @@ building, network configuration, and benchmark execution, as outlined below.
 
 ### 2.1 Hardware
 
-An x86-64 CPU is required; no GPU is used. The paper's experiments used an
-Intel Xeon Gold 6338 and 128 GB RAM. This describes the paper's machine,
-not a measured minimum memory requirement. Peak memory requirements for the
-minimal, quick, and full experiments remain to be documented.
+An x86-64 CPU is required; no GPU is used. 
+Recommended system RAM for running the experiments is listed below. These
+are planning recommendations, not experimentally established minimum limits;
+run the implementations sequentially and leave memory available for the OS.
+
+| Experiment scope | Recommended RAM |
+| --- | ---: |
+| Ours (cmp) only, including the `full` preset | 32 GB |
+| The `quick` preset for all three implementations | 128 GB |
+| Exp12: da-ROT-based fuzzy PSI at N = 2^16 | 256 GB (provisional) |
+
+The da-ROT-based implementation has substantially higher memory requirements
+at N = 2^16. A full-suite run was killed by the OOM killer with a 128 GiB
+container memory limit. We therefore recommend 256 GB RAM for these larger
+Exp12 experiments, but validation at this capacity is still pending; it is
+not yet a confirmed sufficient memory limit. These recommendations concern
+benchmark execution, not building the images from source.
 
 ### 2.2 Software
 
@@ -92,11 +105,10 @@ README:
 - [Exp11: so-OPPRF-based fuzzy PSI — Docker build instructions](https://github.com/zhouxv/fpsi_ssoprf/blob/fpsi-cmp_artifact_20260919/README.md#build-and-run-with-docker)
 - [Exp12: da-ROT-based fuzzy PSI — Docker build instructions](https://github.com/zhouxv/fpsi_daOT/blob/fpsi-cmp_artifact_20260916/README.md#build-and-run-with-docker)
 
-Allow approximately **25–35 minutes per image** to build Ours, Exp11, or
-Exp12 from source, including dependency downloads and compilation. This is a
-rough planning estimate based on our build logs, not a measured minimum or
-upper bound. Actual build time depends on hardware, download speed, and
-Docker's build cache; slower downloads may take longer.
+Allow approximately **17–20 minutes per image** to build from source.  These times include
+dependency downloads, compilation, and loading the resulting image into Docker. They are planning estimates, not guaranteed
+bounds; actual build time depends on hardware, download speed, and Docker's
+build cache.
 
 ### 3.2 Prebuilt Docker images
 
