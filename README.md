@@ -55,14 +55,10 @@ run the implementations sequentially and leave memory available for the OS.
 | --- | ---: |
 | Ours (cmp) only, including the `full` preset | 32 GB |
 | The `quick` preset for all three implementations | 128 GB |
-| Exp12: da-ROT-based fuzzy PSI at N = 2^16 | 256 GB (provisional) |
+| Exp12: da-ROT-based fuzzy PSI at N = 2^16 (when run `full` preset) | More than 200 GB |
 
-The da-ROT-based implementation has substantially higher memory requirements
-at N = 2^16. A full-suite run was killed by the OOM killer with a 128 GiB
-container memory limit. We therefore recommend 256 GB RAM for these larger
-Exp12 experiments, but validation at this capacity is still pending; it is
-not yet a confirmed sufficient memory limit. These recommendations concern
-benchmark execution, not building the images from source.
+The da-ROT-based implementation reached a peak memory usage of approximately
+**160 GiB** at N = 2^16, so we recommend **more than 200 GB RAM** for this scale.
 
 ### 2.2 Software
 
